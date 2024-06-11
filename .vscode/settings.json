@@ -1,0 +1,13 @@
+{
+  "C_Cpp.default.includePath": [
+    "/opt/xilinx/xrt/include",
+    // "${XILINX_HLS}/include/",
+    // "${XILINX_HLS}/include/etc/",
+    "/HDD/Xilinx/Vitis_HLS/2023.2/include/",
+    "/HDD/Xilinx/Vitis_HLS/2023.2/include/etc/",
+    "${workspaceFolder}/runner/",
+    "${workspaceFolder}",
+  ],
+  "C_Cpp.default.compilerPath": "/usr/bin/g++-11",
+  "C_Cpp.default.cppStandard": "c++17"
+}
