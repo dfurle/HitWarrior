@@ -46,7 +46,8 @@ int setupDevice(std::vector<cl::Device>& devices, cl::Device& device){
 void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in, Track* out)
 {
   printf("Initialize kernel\n");
-  cl::Kernel kernel(program, "runner");
+  cl::Kernel kernel_read(program, "read_data");
+  cl::Kernel kernel_write(program, "write_data");
 
   // Compute the size of array in bytes
   size_t in_size = sizeof(Track) * INPUTTRACKSIZE;
@@ -63,11 +64,8 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
   cl::Buffer buffer_out(context, CL_MEM_WRITE_ONLY, out_size);
 
   // set the kernel Arguments
-  int narg = 0;
-  kernel.setArg(narg++, buffer_l1);
-  kernel.setArg(narg++, buffer_out);
-  kernel.setArg(narg++, MIN_DIST);
-  kernel.setArg(narg++, MAX_SHARED);
+  kernel_read.setArg(0, buffer_l1);
+  kernel_write.setArg(0, buffer_out);
 
   // We then need to map our OpenCL buffers to get the pointers
   Track *ptr_l1 = (Track *)q.enqueueMapBuffer(buffer_l1, CL_TRUE, CL_MAP_WRITE, 0, in_size);
@@ -80,7 +78,8 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
   q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
 
   // Launch the Kernel
-  q.enqueueTask(kernel);
+  q.enqueueTask(kernel_read);
+  q.enqueueTask(kernel_write);
 
   // The result of the previous kernel execution will need to be retrieved in
   // order to view the results. This call will transfer the data from FPGA to
@@ -156,10 +155,11 @@ int main(int argc, char *argv[]) {
 
       double NNScore = std::stof(scoreLine); // get NN score from the other file
       inputTracks[count].NNScore = NNScore;
-      inputTracks[count].flag_delete = ap_int<2>(0);
+      printf("%f : %f\n", float(inputTracks[count].NNScore), NNScore);
+      // inputTracks[count].flag_delete = ap_int<2>(0);
 
       outTracks[count].NNScore = 0;
-      outTracks[count].flag_delete = ap_int<2>(0);
+      // outTracks[count].flag_delete = ap_int<2>(0);
       for(int i = 0; i < NHITS; i++){
         outTracks[count].hits[i].x = 0;
         outTracks[count].hits[i].y = 0;
@@ -174,9 +174,9 @@ int main(int argc, char *argv[]) {
 
       // Organize it into hits
       for(int i = 0; i < NHITS; i++){
-        inputTracks[count].hits[i].x = inValue[i + 0 * NHITS];
-        inputTracks[count].hits[i].y = inValue[i + 1 * NHITS];
-        inputTracks[count].hits[i].z = inValue[i + 2 * NHITS];
+        inputTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
+        inputTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
+        inputTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
       }
       count++;
       if(count >= INPUTTRACKSIZE) break;
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
     }
     printf("ID: %d | NNScore: %f\n", i, float(outTracks[i].NNScore));
     for(int j = 0; j < NHITS; j++){
-      printf(" %d %d %d\n",outTracks[i].hits[j].x, outTracks[i].hits[j].y, outTracks[i].hits[j].z);
+      printf(" %d %d %d\n",int(outTracks[i].hits[j].x), int(outTracks[i].hits[j].y), int(outTracks[i].hits[j].z));
     }
     printf("\n");
   }
