@@ -57,7 +57,8 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
   auto begin = std::chrono::high_resolution_clock::now();
 
   // printf("Initialize kernel\n");
-  cl::Kernel kernel(program, "runner");
+  cl::Kernel kernel_read(program, "read_data");
+  cl::Kernel kernel_write(program, "write_data");
   printTiming(" - kernel init %d us\n", begin);
 
   // Compute the size of array in bytes
@@ -75,11 +76,8 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
   cl::Buffer buffer_out(context, CL_MEM_WRITE_ONLY, out_size);
 
   // set the kernel Arguments
-  int narg = 0;
-  kernel.setArg(narg++, buffer_l1);
-  kernel.setArg(narg++, buffer_out);
-  kernel.setArg(narg++, MIN_DIST);
-  kernel.setArg(narg++, MAX_SHARED);
+  kernel_read.setArg(0, buffer_l1);
+  kernel_write.setArg(0, buffer_out);
 
   // We then need to map our OpenCL buffers to get the pointers
   Track *ptr_l1 = (Track *)q.enqueueMapBuffer(buffer_l1, CL_TRUE, CL_MAP_WRITE, 0, in_size);
@@ -91,12 +89,39 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
 
   printTiming(" - memcpy in %d us\n", begin);
 
+  // Data will be migrated to kernel space
   q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
-  q.enqueueTask(kernel);
-  q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
-  printTiming(" - migrate %d us\n", begin);
+  // Launch the Kernel
+  q.enqueueTask(kernel_read);
+  printTiming(" - enqueue %d us\n", begin);
   q.finish();
   printTiming(" - finish %d us\n", begin);
+
+
+  // // Data will be migrated to kernel space
+  // q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
+  // // Launch the Kernel
+  // q.enqueueTask(kernel_read);
+  // printTiming(" - enqueue %d us\n", begin);
+  // q.finish();
+  // printTiming(" - finish %d us\n", begin);
+
+  q.enqueueTask(kernel_write);
+  // The result of the previous kernel execution will need to be retrieved in
+  // order to view the results. This call will transfer the data from FPGA to
+  // source_results vector
+  q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
+  printTiming(" - enqueue2 %d us\n", begin);
+  q.finish();
+  printTiming(" - finish2 %d us\n", begin);
+
+  // q.enqueueTask(kernel_write);
+  // // The result of the previous kernel execution will need to be retrieved in
+  // // order to view the results. This call will transfer the data from FPGA to
+  // // source_results vector
+  // q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
+  // q.finish();
+  // printTiming(" - finish2 %d us\n", begin);
 
   memcpy ( out, ptr_out, out_size );
 
@@ -170,6 +195,7 @@ int main(int argc, char *argv[]) {
 
       double NNScore = std::stof(scoreLine); // get NN score from the other file
       inputTracks[count].NNScore = NNScore;
+      printf("%f : %f\n", float(inputTracks[count].NNScore), NNScore);
       // inputTracks[count].flag_delete = ap_int<2>(0);
 
       outTracks[count].NNScore = 0;
