@@ -45,14 +45,11 @@ void searchHit(hls::stream<stream_t>& in_stream, hls::stream<stream_t>& out_stre
   hls::stream<Track> tmp;
   stream_t s;
 
-  printf("Search Start!\n");
 
   s = in_stream.read();
 
   // check if end of data first (read_data will write -1 to first data stream)
   if(data_t(s.data) == data_t(-1)){
-    printf("!!! Search Found Ending\n");
-    printf("!!! Search Sending Ending\n");
     out_stream.write(s);
     return;
   }
@@ -71,7 +68,6 @@ void searchHit(hls::stream<stream_t>& in_stream, hls::stream<stream_t>& out_stre
     t.hits[i] = h;
   }
   tmp.write(t);
-  printf("- Search read first track\n");
 
 
 
@@ -79,14 +75,12 @@ void searchHit(hls::stream<stream_t>& in_stream, hls::stream<stream_t>& out_stre
     s = in_stream.read();
     // check if end of data first (read_data will write -1 to first data stream)
     if(data_t(s.data) == data_t(-1)){
-      printf("- Search Found Ending2\n");
       break;
     }
 
     int size = tmp.size();
     bool flagged_deletion = false;
 
-    printf("- Searched\n");
     Track trkB;
     trkB.NNScore = reinterpret_cast<nnscore_t&>(s.data);
     for(int i = 0; i < NHITS; i++){
@@ -124,7 +118,6 @@ void searchHit(hls::stream<stream_t>& in_stream, hls::stream<stream_t>& out_stre
   }
 
   // int counter = 0;
-  printf("- Search writing\n");
   while(tmp.size() > 0){
     Track t = tmp.read();
     stream_t s2;
@@ -141,7 +134,6 @@ void searchHit(hls::stream<stream_t>& in_stream, hls::stream<stream_t>& out_stre
     }
   }
   // write final data (-1)
-  printf("!!! Search Sending Ending\n");
   out_stream.write(s);
 
 

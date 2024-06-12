@@ -15,7 +15,6 @@ void read_data(Track* inTracks, hls::stream<stream_t>& out_stream){
 
 
     s.data = reinterpret_cast<ap_uint<16>&>(trk.NNScore);
-    printf("NNScore read: %f %f\n", float(trk.NNScore), float(s.data));
     out_stream.write(s);
     for(int j = 0; j < NHITS; j++){
       s.data = trk.hits[j].x;
@@ -31,7 +30,6 @@ void read_data(Track* inTracks, hls::stream<stream_t>& out_stream){
   // finished data
   stream_t s1;
   s1.data = data_t(-1);
-  printf("!!! Read Sending ending\n");
   out_stream.write(s1);
 }
 

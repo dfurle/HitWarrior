@@ -14,7 +14,6 @@ void write_data(Track* outTracks, hls::stream<stream_t>& in_stream){
       // finished
       return;
     }
-    printf("-Wrote\n");
     
     Track t;
     t.NNScore = reinterpret_cast<nnscore_t&>(s.data);
