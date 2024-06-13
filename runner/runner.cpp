@@ -17,8 +17,8 @@ void filterLowNN(Track* inTracks, Track* outTracks){
       outTracks[counter++] = inTracks[i];
     }
   }
-  if(counter != INPUTTRACKSIZE){
-    outTracks[counter].NNScore = -1;
+  for(int i = counter; i < INPUTTRACKSIZE; i++){
+    outTracks[i].NNScore = -0.5;
   }
 }
 
@@ -58,23 +58,35 @@ int compare(Track trkA, Track trkB, int min_dist, int max_shared){
 }
 
 void searchHit(Track* inTracks, Track* outTracks, int min_dist, int max_shared){
+  #pragma HLS PIPELINE
+
+  OUTER:
   for(int i = 0; i < INPUTTRACKSIZE; i++){
+    #pragma HLS PIPELINE
     Track trkA = inTracks[i];
-    if(trkA.NNScore < 0){ // reached end of trimmed list
+    if(trkA.NNScore < 0){
+      if(trkA.NNScore < -0.5) // reached end of trimmed list
+        break;
       continue;
       // break;
     }
+    INNER:
     for(int j = i+1; j < INPUTTRACKSIZE; j++){
+      #pragma HLS PIPELINE
       Track trkB = inTracks[j];
-      if(trkB.NNScore < 0){ // reached end of trimmed list
+      if(trkB.NNScore < 0){
+        if(trkB.NNScore < -0.5) // reached end of trimmed list
+          break;
         continue;
         // break;
       }
       int cmpr = compare(trkA, trkB, min_dist, max_shared);
       if(cmpr == COMPARISON::TRKA){
-        trkB.NNScore = -1;
+        inTracks[j].NNScore = -0.2;
+        // printf("Remove TRK B\n");
       } else if(cmpr == COMPARISON::TRKB){
-        trkA.NNScore = -1;
+        inTracks[i].NNScore = -0.2;
+        // printf("Remove TRK A\n");
       } else {
         
       }
@@ -83,6 +95,7 @@ void searchHit(Track* inTracks, Track* outTracks, int min_dist, int max_shared){
 
 
   int counter = 0;
+  FINAL:
   for(int i = 0; i < INPUTTRACKSIZE; i++){
     Track trk = inTracks[i];
     if(trk.NNScore < 0){ // reached end of trimmed list
@@ -185,6 +198,7 @@ void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared){
   int min_dist_read = min_dist;
   int max_shared_read = max_shared;
 
+  READ:
   for(int i=0; i < INPUTTRACKSIZE; i++) {
     #pragma HLS PIPELINE
     inTracks_copy[i] = inputTracks[i];
@@ -193,6 +207,7 @@ void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared){
   filterLowNN(inTracks_copy, midTracks_copy);
   searchHit(midTracks_copy, outTracks_copy, min_dist_read, max_shared_read);
 
+  WRITE:
   for(int i=0; i < INPUTTRACKSIZE; i++) {
     #pragma HLS PIPELINE
     outTracks[i] = outTracks_copy[i];

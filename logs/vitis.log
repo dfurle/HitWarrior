@@ -1,0 +1,23 @@
+14:22:58 INFO  : updated workspace path: 
+14:22:58 INFO  : updated workspace path: 
+14:22:58 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//repo.py -st  /HDD/Xilinx/Vitis/2023.2/data/embeddedsw && deactivate
+14:22:59 INFO  : Successfully created repository data at /tmp/rigel_lopper_denis7471990645862350211
+14:22:59 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//get_template_data.py -d /tmp/rigel_lopper_denis17591439750073491230 -r /tmp/rigel_lopper_denis7471990645862350211/.repo.yaml && deactivate
+14:22:59 INFO  : Embedded Template List generated successfully
+14:22:59 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//repo.py -st  /HDD/Xilinx/Vitis/2023.2/data/embeddedsw && deactivate
+14:23:00 INFO  : Successfully created repository data at /tmp/rigel_lopper_denis1307157256288318371
+14:23:00 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//get_template_data.py -d /tmp/rigel_lopper_denis10315703171913837771 -r /tmp/rigel_lopper_denis1307157256288318371/.repo.yaml && deactivate
+14:23:00 INFO  : Embedded Template List generated successfully
+14:31:21 INFO  : Terminating Vitis C++ Server
+14:31:21 INFO  : Vitis C++ Server terminated
+14:31:34 INFO  : updated workspace path: 
+14:31:34 INFO  : updated workspace path: 
+14:31:34 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//repo.py -st  /HDD/Xilinx/Vitis/2023.2/data/embeddedsw && deactivate
+14:31:34 INFO  : Successfully created repository data at /tmp/rigel_lopper_denis10653446258790317485
+14:31:34 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//get_template_data.py -d /tmp/rigel_lopper_denis3990212415850889194 -r /tmp/rigel_lopper_denis10653446258790317485/.repo.yaml && deactivate
+14:31:35 INFO  : Embedded Template List generated successfully
+14:31:35 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//repo.py -st  /HDD/Xilinx/Vitis/2023.2/data/embeddedsw && deactivate
+14:31:35 INFO  : Successfully created repository data at /tmp/rigel_lopper_denis15438201505030471980
+14:31:35 INFO  : bash, -c, source /HDD/Xilinx/Vitis/2023.2/tps/lnx64/lopper-1.1.0/env/bin/activate && python /HDD/Xilinx/Vitis/2023.2/data/embeddedsw/scripts/pyesw//get_template_data.py -d /tmp/rigel_lopper_denis12183919215711419564 -r /tmp/rigel_lopper_denis15438201505030471980/.repo.yaml && deactivate
+14:31:35 INFO  : Embedded Template List generated successfully
+14:35:35 INFO  : Terminating Vitis C++ Server
