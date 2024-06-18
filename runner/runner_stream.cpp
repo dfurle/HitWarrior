@@ -25,26 +25,36 @@ INFO: [HLS 214-178] Inlining function 'Track::Track() (.144)' into 'runner' (/ho
 extern "C"{
 
 
-void filterLowNN(Track inTracks[INPUTTRACKSIZE], Track outTracks[INPUTTRACKSIZE]){
-  #pragma HLS PIPELINE
+void filterLowNN(Track* inTracks, Track* outTracks){
+  // #pragma HLS interface ap_ctrl_none port=return
+  // #pragma HLS PIPELINE
+  uintS_t counter = 0;
+  uintS_t i = 0;
   MAINLOOP:
-  for(int i = 0; i < INPUTTRACKSIZE; i++){
+  for(i = 0; i < INPUTTRACKSIZE; i++){
+    // #pragma HLS PIPELINE II=20
     Track trk = inTracks[i];
     if(trk.NNScore >= MIN_THRESHOLD){
-      outTracks[i] = trk;
-    } else {
-      trk.NNScore = -0.5; // flag to not use this in overlap checking
-      outTracks[i] = trk;
+      outTracks[counter++] = inTracks[i];
     }
   }
+  if(counter < INPUTTRACKSIZE){
+    // Track trk = outTracks[counter];
+    // trk.NNScore = -0.5;
+    // outTracks[counter] = trk;
+    outTracks[counter].NNScore = -0.5;
+  }
+  // SECONDARY:
+  // for(i = counter; i < intS_t(INPUTTRACKSIZE); i++){
+  //   outTracks[i].NNScore = -0.5;
+  // }
 }
 
 // returns TRKA if trkA survives or TRKB or BOTH 
-int compare(Track trkA, Track trkB, int min_dist, int max_shared){
-  // #pragma HLS PIPELINE
-  int nShared = 0;
-  int ii = 0;
-  int jj = 0;
+int compare(Track trkA, Track trkB, intS_t min_dist, intS_t max_shared){
+  uintS_t nShared = 0;
+  uintS_t ii = 0;
+  uintS_t jj = 0;
   INNERLOOP:
   for(ii = 0; ii < NHITS; ii++){
     // #pragma HLS UNROLL
@@ -77,65 +87,121 @@ int compare(Track trkA, Track trkB, int min_dist, int max_shared){
   }
 }
 
-void loopInner(Track trkA, Track inTracks[INPUTTRACKSIZE], Track tmp[INPUTTRACKSIZE], int i, int min_dist, int max_shared){
-  INNER:
-  // for(int j = i+1; j < INPUTTRACKSIZE; j++){
-  for(int k = 0; k < INPUTTRACKSIZE; k++){
-    #pragma HLS UNROLL
-    // int j = k + i + 1;
-    // if(j >= INPUTTRACKSIZE)
-      // break;
-    // Track trkB = inTracks[j];
-    Track trkB = inTracks[k];
-    // if(trkB.NNScore < 0){
-    //   continue;
-    // }
-    int cmpr = compare(trkA, trkB, min_dist, max_shared);
-    if(cmpr == COMPARISON::TRKA){
-      trkB.NNScore = -0.5; // flag to not use anymore
-    } else if(cmpr == COMPARISON::TRKB){
-      trkA.NNScore = -0.5; // flag to not use anymore
-    } else {
-      
+
+#define USE_STREAM
+
+
+#ifdef USE_STREAM
+void searchHit(Track* inTracks, Track* outTracks, int min_dist, int max_shared){
+  // #pragma HLS PIPELINE
+  hls::stream<Track> tmp;
+  uint i = 0;
+  uint j = 0;
+  uint tmpsize = 0;
+  intB_t flagOverlap = 0;
+
+  OUTER:
+  for(i = uintS_t(0); i < intS_t(INPUTTRACKSIZE); i++){
+    #pragma HLS INLINE off
+    Track trkA = inTracks[i];
+    if(trkA.NNScore < 0){
+      break;
     }
-    tmp[i] = trkA;
-    tmp[k] = trkB;
+    tmpsize = tmp.size();
+    flagOverlap = 0;
+    INNER:
+    for(j = uintS_t(0); j < tmpsize; j++){
+      #pragma HLS INLINE off
+      // #pragma HLS UNROLL
+      Track trkB = tmp.read();
+      int cmpr = compare(trkA, trkB, min_dist, max_shared);
+      if(cmpr == COMPARISON::TRKA){
+        // do nothing, check rest of em
+      } else if(cmpr == COMPARISON::TRKB){
+        tmp.write(trkB);
+        flagOverlap = 1; // dont add trkA at the end
+        // printf("trkB: *%d : %d %d %d\n", i, int(trkB.hits[0].x), int(trkB.hits[0].y), int(trkB.hits[0].z));
+      } else {
+        tmp.write(trkB);
+        // printf("writeback: *%d : %d %d %d\n", i, int(trkB.hits[0].x), int(trkB.hits[0].y), int(trkB.hits[0].z));
+      }
+    }
+    if(flagOverlap == intB_t(0)){
+      tmp.write(trkA);
+      printf("flagOverlap: %d : %d %d %d\n", i, int(trkA.hits[0].x), int(trkA.hits[0].y), int(trkA.hits[0].z));
+    }
+  }
+
+
+  // int tmpsize = tmp.size();
+  // for(int i = 0; i < tmpsize; i++){
+  int counter = 0;
+  FINAL:
+  while(tmp.size() > 0){
+    // #pragma HLS PIPELINE
+    Track trk = tmp.read();
+    outTracks[counter++] = trk;
   }
 }
 
 
-void searchHit(Track inTracks[INPUTTRACKSIZE], Track outTracks[INPUTTRACKSIZE], int min_dist, int max_shared){
-  // #pragma HLS PIPELINE
+#else
 
-  Track tmp[INPUTTRACKSIZE];
-  #pragma HLS ARRAY_PARITITION variable=tmp complete
-  for(int i = 0; i < INPUTTRACKSIZE; i++){
-    // #pragma HLS PIPELINE
-    tmp[i] = inTracks[i];
-  }
+
+void searchHit(Track* inTracks, Track* outTracks, int min_dist, int max_shared){
+  // #pragma HLS PIPELINE
 
   OUTER:
   for(int i = 0; i < INPUTTRACKSIZE; i++){
-    // #pragma HLS PIPELINE
+    #pragma HLS PIPELINE
     Track trkA = inTracks[i];
-    // if(trkA.NNScore < 0)
-    //   continue;
-    // loopInner(trkA, tmp);
-    loopInner(trkA, inTracks, tmp, i, min_dist, max_shared);
+    if(trkA.NNScore < 0){
+      if(trkA.NNScore < -0.5) // reached end of trimmed list
+        break;
+      continue;
+      // break;
+    }
+    INNER:
+    // for(int j = i+1; j < INPUTTRACKSIZE; j++){
+    for(int j = i+1; j < INPUTTRACKSIZE; j++){
+      if(i == j)
+        continue;
+      // #pragma HLS PIPELINE
+      Track trkB = inTracks[j];
+      if(trkB.NNScore < 0){
+        if(trkB.NNScore < -0.5) // reached end of trimmed list
+          break;
+        continue;
+        // break;
+      }
+      int cmpr = compare(trkA, trkB, min_dist, max_shared);
+      if(cmpr == COMPARISON::TRKA){
+        inTracks[j].NNScore = -0.2;
+        // printf("Remove TRK B\n");
+      } else if(cmpr == COMPARISON::TRKB){
+        inTracks[i].NNScore = -0.2;
+        // printf("Remove TRK A\n");
+      } else {
+        
+      }
+    }
   }
 
-  // int counter = 0;
+
+  int counter = 0;
   FINAL:
   for(int i = 0; i < INPUTTRACKSIZE; i++){
-    // #pragma HLS PIPELINE
+    #pragma HLS PIPELINE
     Track trk = inTracks[i];
-    // if(trk.NNScore < 0){ // reached end of trimmed list
-    //   continue;
-    // }
-    outTracks[i] = trk;
+    // if(trk.NNScore < 0){
+    if(trk.NNScore < 0){ // reached end of trimmed list
+      continue;
+    }
+    outTracks[counter++] = trk;
   }
 }
 
+#endif
 
 void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared){
   #pragma HLS PIPELINE
@@ -157,10 +223,6 @@ void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared){
   #pragma HLS ARRAY_PARTITION variable=inTracks_copy complete
   #pragma HLS ARRAY_PARTITION variable=midTracks_copy complete
   #pragma HLS ARRAY_PARTITION variable=outTracks_copy complete
-  #pragma HLS ARRAY_PARTITION variable=inTracks_copyhits complete
-  #pragma HLS ARRAY_PARTITION variable=hits complete
-  #pragma HLS ARRAY_PARTITION variable=hits complete
-
 
   int min_dist_read = min_dist;
   int max_shared_read = max_shared;
@@ -176,13 +238,10 @@ void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared){
   searchHit(midTracks_copy, outTracks_copy, min_dist_read, max_shared_read);
 
   WRITE:
-  int counter = 0;
   for(int i=0; i < INPUTTRACKSIZE; i++) {
     #pragma HLS UNROLL
     // #pragma HLS PIPELINE
-    Track trk = outTracks_copy[i];
-    if(trk.NNScore > 0)
-      outTracks[counter++] = trk;
+    outTracks[i] = outTracks_copy[i];
   }
 
   // ---=== otherwise just run something like this ===---

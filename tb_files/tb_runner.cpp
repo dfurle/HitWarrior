@@ -4,7 +4,18 @@
 
 #include "projectDefines.h"
 
+
+int printTiming(std::string str, std::chrono::_V2::system_clock::time_point & begin) {
+  auto end = std::chrono::high_resolution_clock::now();
+  int diffus = std::chrono::duration_cast < std::chrono::microseconds > (end - begin).count();
+  printf(str.c_str(), diffus);
+  begin = end;
+  return diffus;
+}
+
+
 int main(int argc, char *argv[]) {
+  auto begin = std::chrono::high_resolution_clock::now();
 
   printf("INITIALIZING DATA\n");
 
@@ -24,10 +35,10 @@ int main(int argc, char *argv[]) {
 
       double NNScore = std::stof(scoreLine); // get NN score from the other file
       inputTracks[count].NNScore = NNScore;
-      inputTracks[count].flag_delete = ap_int<2>(0);
+      // inputTracks[count].flag_delete = ap_int<2>(0);
 
       outTracks[count].NNScore = 0;
-      outTracks[count].flag_delete = ap_int<2>(0);
+      // outTracks[count].flag_delete = ap_int<2>(0);
       for(int i = 0; i < NHITS; i++){
         outTracks[count].hits[i].x = 0;
         outTracks[count].hits[i].y = 0;
@@ -59,7 +70,9 @@ int main(int argc, char *argv[]) {
   scoreFile.close();
 
   printf("\n---=== Running CSim ===---\n\n");
+  printTiming(" - Initialization %d us\n", begin);
   runner(inputTracks, outTracks, MIN_DIST, MAX_SHARED);
+  printTiming(" - runner() %d us\n", begin);
   printf("\n---=== Finished CSim ===---\n\n");
 
   printf("Pred Outs:\n");
@@ -74,9 +87,10 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
 
-  std::ofstream outputFile("../tb_output.dat");
+  std::ofstream outputFile("../../../../../../tb_files/tb_output.dat");
   if(outputFile.is_open()){
     for (int i = 0; i < INPUTTRACKSIZE; i++) {
+      // printf("outTracks[%d].NNScore == %.3f\n", i, float(outTracks[i].NNScore));
       if(float(outTracks[i].NNScore) < 0.5){
         break;
       }
@@ -95,5 +109,6 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
 
   std::cout << "Finished" << std::endl;
+  printTiming(" - Finished %d us\n", begin);
   return 0;
 }

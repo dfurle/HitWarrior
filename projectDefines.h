@@ -9,7 +9,8 @@
 
 // #define SIZE_LIST 10
 
-#define INPUTTRACKSIZE 100
+// #define INPUTTRACKSIZE 100
+#define INPUTTRACKSIZE 16
 #define NHITS 5
 #define MIN_DIST 3000 // ~30x30 area // max distance is 1000
 #define MAX_SHARED 2
@@ -32,7 +33,8 @@ struct Hit{
 };
 
 struct Track{
-  hls::vector<Hit, NHITS> hits;
+  // hls::vector<Hit, NHITS> hits;
+  Hit hits[NHITS];
   nnscore_t NNScore;
 };
 
@@ -42,10 +44,10 @@ struct Track{
 
 enum COMPARISON{BOTH, TRKA, TRKB};
 
-// extern "C"{
+extern "C"{
 
-// void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared);
+void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared);
 
-// }
+}
 
 #endif

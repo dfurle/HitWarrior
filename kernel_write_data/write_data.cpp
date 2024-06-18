@@ -5,6 +5,8 @@ extern "C"{
 
 void write_data(Track* outTracks, hls::stream<stream_t>& in_stream){
   #pragma HLS INTERFACE m_axi port=outTracks offset=slave bundle=aximm1
+  #pragma HLS INTERFACE mode=axis port=in_stream
+
 
   int counter = 0;
   while(true){

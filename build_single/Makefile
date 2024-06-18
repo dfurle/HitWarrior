@@ -37,8 +37,8 @@ ${RUNNER_KERNEL}.xo: ${RUNNER_SRC} ${RUNNER_CFG}
 	mv ${RUNNER_KERNEL}/${RUNNER_KERNEL}.xo ..
 
 
-# csim: ${RUNNER_SRC} ${HLS_CONFIG}
-# 	vitis-run --mode hls --csim --config ${HLS_CONFIG} --work_dir ./kernels/runner
+csim: ${RUNNER_SRC} ${RUNNER_CFG}
+	vitis-run --mode hls --csim --config ${RUNNER_CFG} --work_dir ./kernels/runner
 
 # v++ -l -t $(EMU_MODE) --config ${WORK}/runner/config.cfg ../${RUNNER_KERNEL}.xo -o $(HLS_NAME).xclbin
 

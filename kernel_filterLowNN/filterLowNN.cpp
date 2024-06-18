@@ -5,6 +5,9 @@ extern "C"{
 
 void filterLowNN(hls::stream<stream_t>& in_stream, hls::stream<stream_t>& out_stream){
   #pragma HLS interface ap_ctrl_none port=return
+  #pragma HLS INTERFACE mode=axis port=in_stream
+  #pragma HLS INTERFACE mode=axis port=out_stream
+
 
   stream_t s = in_stream.read(); // read nnscore
 

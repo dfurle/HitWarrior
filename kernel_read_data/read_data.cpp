@@ -7,6 +7,7 @@ extern "C"{
 void read_data(Track* inTracks, hls::stream<stream_t>& out_stream){
   // #pragma HLS DATA_PACK variable=out_stream
   #pragma HLS INTERFACE m_axi port=inTracks offset=slave bundle=aximm1
+  #pragma HLS INTERFACE mode=axis port=out_stream
 
   READ_IN1_ARRAY1:
   for(int i = 0; i < INPUTTRACKSIZE; i++){

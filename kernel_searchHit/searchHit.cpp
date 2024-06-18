@@ -41,6 +41,9 @@ int compare(Track trkA, Track trkB, int min_dist, int max_shared){
 
 void searchHit(hls::stream<stream_t>& in_stream, hls::stream<stream_t>& out_stream){
   #pragma HLS interface ap_ctrl_none port=return
+  #pragma HLS INTERFACE mode=axis port=in_stream
+  #pragma HLS INTERFACE mode=axis port=out_stream
+
 
   hls::stream<Track> tmp;
   stream_t s;
