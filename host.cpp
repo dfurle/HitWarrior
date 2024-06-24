@@ -52,7 +52,8 @@ int setupDevice(std::vector<cl::Device>& devices, cl::Device& device){
   return 0;
 }
 
-void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in, Track* out)
+// void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in, Track* out)
+void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in)
 {
   auto begin = std::chrono::high_resolution_clock::now();
 
@@ -62,7 +63,7 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
 
   // Compute the size of array in bytes
   size_t in_size = sizeof(Track) * INPUTTRACKSIZE;
-  size_t out_size = sizeof(Track) * INPUTTRACKSIZE;
+  // size_t out_size = sizeof(Track) * INPUTTRACKSIZE;
 
   // std::cout << "in_hist_size:  " << in_size << std::endl;
   // std::cout << "out_size: " << out_size << std::endl;
@@ -72,18 +73,18 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
   // can be used to reference the memory locations on the device.
   // printf("Initializing Buffers\n");
   cl::Buffer buffer_l1(context, CL_MEM_READ_ONLY, in_size);
-  cl::Buffer buffer_out(context, CL_MEM_WRITE_ONLY, out_size);
+  // cl::Buffer buffer_out(context, CL_MEM_WRITE_ONLY, out_size);
 
   // set the kernel Arguments
   int narg = 0;
   kernel.setArg(narg++, buffer_l1);
-  kernel.setArg(narg++, buffer_out);
+  // kernel.setArg(narg++, buffer_out);
   kernel.setArg(narg++, MIN_DIST);
   kernel.setArg(narg++, MAX_SHARED);
 
   // We then need to map our OpenCL buffers to get the pointers
   Track *ptr_l1 = (Track *)q.enqueueMapBuffer(buffer_l1, CL_TRUE, CL_MAP_WRITE, 0, in_size);
-  Track *ptr_out = (Track *)q.enqueueMapBuffer(buffer_out, CL_TRUE, CL_MAP_READ, 0, out_size);
+  // Track *ptr_out = (Track *)q.enqueueMapBuffer(buffer_out, CL_TRUE, CL_MAP_READ, 0, out_size);
 
   printTiming(" - mapbuf %d us\n", begin);
 
@@ -93,17 +94,19 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
 
   q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
   q.enqueueTask(kernel);
-  q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
+  // q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
+  q.enqueueMigrateMemObjects({buffer_l1}, CL_MIGRATE_MEM_OBJECT_HOST);
   printTiming(" - migrate %d us\n", begin);
   q.finish();
   printTiming(" - finish %d us\n", begin);
 
-  memcpy ( out, ptr_out, out_size );
+  // memcpy ( out, ptr_out, out_size );
+  memcpy ( in, ptr_l1, in_size );
 
   printTiming(" - memcpy out %d us\n", begin);
 
   q.enqueueUnmapMemObject(buffer_l1, ptr_l1);
-  q.enqueueUnmapMemObject(buffer_out, ptr_out);
+  // q.enqueueUnmapMemObject(buffer_out, ptr_out);
 
   q.finish();
 
@@ -154,8 +157,9 @@ int main(int argc, char *argv[]) {
 
   printf("INITIALIZING DATA\n");
 
-  Track* inputTracks = new Track[INPUTTRACKSIZE];
-  Track* outTracks = new Track[INPUTTRACKSIZE];
+  Track* inTracks = new Track[INPUTTRACKSIZE];
+  // Track* outTracks = new Track[INPUTTRACKSIZE];
+
 
   // Input hit list to search
   int count = 0;
@@ -169,16 +173,16 @@ int main(int argc, char *argv[]) {
       std::string s;
 
       double NNScore = std::stof(scoreLine); // get NN score from the other file
-      inputTracks[count].NNScore = NNScore;
-      // inputTracks[count].flag_delete = ap_int<2>(0);
+      inTracks[count].NNScore = NNScore;
+      // inTracks[count].flag_delete = ap_int<2>(0);
 
-      outTracks[count].NNScore = 0;
+      // outTracks[count].NNScore = 0;
       // outTracks[count].flag_delete = ap_int<2>(0);
-      for(int i = 0; i < NHITS; i++){
-        outTracks[count].hits[i].x = 0;
-        outTracks[count].hits[i].y = 0;
-        outTracks[count].hits[i].y = 0;
-      }
+      // for(int i = 0; i < NHITS; i++){
+      //   outTracks[count].hits[i].x = 0;
+      //   outTracks[count].hits[i].y = 0;
+      //   outTracks[count].hits[i].y = 0;
+      // }
 
       // store it in a float
       std::vector<double> inValue;
@@ -188,9 +192,9 @@ int main(int argc, char *argv[]) {
 
       // Organize it into hits
       for(int i = 0; i < NHITS; i++){
-        inputTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
-        inputTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
-        inputTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
+        inTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
+        inTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
+        inTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
       }
       count++;
       if(count >= INPUTTRACKSIZE) break;
@@ -210,35 +214,43 @@ int main(int argc, char *argv[]) {
   printTiming("Initializing:\n  %d us\n", begin);
 
   printf(" ┌------- sending 100 tracks\n");
-  setupRunSearch(program, context, q, inputTracks, outTracks);
+  // setupRunSearch(program, context, q, inputTracks, outTracks);
+  setupRunSearch(program, context, q, inTracks);
   std::cout << " └>Total on FPGA+transfer run\n";
   int timingFPGA = printTiming("%d us\n", begin);
   printf("\n---=== Finished Kernel ===---\n\n");
   std::cout << std::endl;
 
-  // printf("Pred Outs:\n");
-  // for (int i = 0; i < INPUTTRACKSIZE; i++) {
-  //   if(float(outTracks[i].NNScore) < 0.5){
-  //     break;
-  //   }
-  //   printf("ID: %d | NNScore: %f\n", i, float(outTracks[i].NNScore));
-  //   for(int j = 0; j < NHITS; j++){
-  //     printf(" %d %d %d\n",int(outTracks[i].hits[j].x), int(outTracks[i].hits[j].y), int(outTracks[i].hits[j].z));
-  //   }
-  //   printf("\n");
-  // }
+  printf("Pred Outs:\n");
+  for (int i = 0; i < INPUTTRACKSIZE; i++) {
+    if(float(inTracks[i].NNScore) < 0.5){
+      continue;
+    }
+    printf("ID: %d | NNScore: %f\n", i, float(inTracks[i].NNScore));
+    for(int j = 0; j < NHITS; j++){
+      printf(" %d %d %d\n",int(inTracks[i].hits[j].x), int(inTracks[i].hits[j].y), int(inTracks[i].hits[j].z));
+    }
+    printf("\n");
+  }
 
   std::ofstream outputFile("../tb_files/tb_output.dat");
   if(outputFile.is_open()){
     for (int i = 0; i < INPUTTRACKSIZE; i++) {
-      if(float(outTracks[i].NNScore) < 0.5){
-        break;
+      // if(float(outTracks[i].NNScore) < 0.5){
+      if(float(inTracks[i].NNScore) < 0.5){
+        continue;
       }
-      outputFile << outTracks[i].NNScore << "\n";
+      // outputFile << outTracks[i].NNScore << "\n";
+      // for(int j = 0; j < NHITS; j++){
+      //   outputFile << outTracks[i].hits[j].x << " ";
+      //   outputFile << outTracks[i].hits[j].y << " ";
+      //   outputFile << outTracks[i].hits[j].z << "\n";
+      // }
+      outputFile << inTracks[i].NNScore << "\n";
       for(int j = 0; j < NHITS; j++){
-        outputFile << outTracks[i].hits[j].x << " ";
-        outputFile << outTracks[i].hits[j].y << " ";
-        outputFile << outTracks[i].hits[j].z << "\n";
+        outputFile << inTracks[i].hits[j].x << " ";
+        outputFile << inTracks[i].hits[j].y << " ";
+        outputFile << inTracks[i].hits[j].z << "\n";
       }
     }
   }

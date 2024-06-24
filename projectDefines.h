@@ -10,8 +10,10 @@
 // #define SIZE_LIST 10
 
 // #define INPUTTRACKSIZE 100
-#define INPUTTRACKSIZE 16
+// #define INPUTTRACKSIZE 128
+#define INPUTTRACKSIZE 64
 #define NHITS 5
+#define NPARS 3
 #define MIN_DIST 3000 // ~30x30 area // max distance is 1000
 #define MAX_SHARED 2
 #define MIN_THRESHOLD 0.5
@@ -19,8 +21,9 @@
 #define HIT_SIZE 16
 #define SCORE_SIZE 16
 
-typedef ap_int<HIT_SIZE> data_t;
-typedef ap_fixed<SCORE_SIZE, 1> nnscore_t;
+// typedef ap_int<HIT_SIZE> data_t;
+typedef ap_fixed<HIT_SIZE, 11> data_t;
+typedef ap_fixed<SCORE_SIZE, 2> nnscore_t;
 // typedef ap_axiu<HIT_SIZE*3,0,0,0> Hit_t;
 // typedef ap_axiu<HIT_SIZE*3*NHITS+SCORE_SIZE,0,0,0> Track_t;
 typedef ap_axiu<HIT_SIZE,0,0,0> stream_t;
@@ -46,7 +49,9 @@ enum COMPARISON{BOTH, TRKA, TRKB};
 
 extern "C"{
 
-void runner(Track* inputTracks, Track* outTracks, int min_dist, int max_shared);
+// void runner(Track* inputTracks, int min_dist, int max_shared);
+// void runner(Track* inTracks, Track* outTracks, int min_dist, int max_shared);
+void runner(Track* inTracks, int min_dist, int max_shared);
 
 }
 
