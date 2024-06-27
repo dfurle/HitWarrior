@@ -11,7 +11,7 @@
 
 // #define INPUTTRACKSIZE 100
 // #define INPUTTRACKSIZE 128
-#define INPUTTRACKSIZE 64
+#define INPUTTRACKSIZE 32
 #define NHITS 5
 #define NPARS 3
 #define MIN_DIST 3000 // ~30x30 area // max distance is 1000

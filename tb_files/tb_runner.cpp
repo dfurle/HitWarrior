@@ -19,8 +19,8 @@ int main(int argc, char *argv[]) {
 
   printf("INITIALIZING DATA\n");
 
-  Track* inputTracks = new Track[INPUTTRACKSIZE];
-  Track* outTracks = new Track[INPUTTRACKSIZE];
+  Track* inTracks = new Track[INPUTTRACKSIZE];
+  // Track* outTracks = new Track[INPUTTRACKSIZE];
 
   // Input hit list to search
   int count = 0;
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
       std::string s;
 
       double NNScore = std::stof(scoreLine); // get NN score from the other file
-      inputTracks[count].NNScore = nnscore_t(NNScore);
+      inTracks[count].NNScore = nnscore_t(NNScore);
       printf("WRITING: %d | %f\n", count, float(nnscore_t(NNScore)));
       // inputTracks[count].flag_delete = ap_int<2>(0);
 
@@ -55,9 +55,9 @@ int main(int argc, char *argv[]) {
       // Organize it into hits
       for(int i = 0; i < NHITS; i++){
         // printf("Assigning %d : %f %f %f\n", i, inValue[i + 0 * NHITS], inValue[i + 1 * NHITS], inValue[i + 2 * NHITS]);
-        inputTracks[count].hits[i].x = data_t(inValue[i + 0 * NHITS]);
-        inputTracks[count].hits[i].y = data_t(inValue[i + 1 * NHITS]);
-        inputTracks[count].hits[i].z = data_t(inValue[i + 2 * NHITS]);
+        inTracks[count].hits[i].x = data_t(inValue[i + 0 * NHITS]);
+        inTracks[count].hits[i].y = data_t(inValue[i + 1 * NHITS]);
+        inTracks[count].hits[i].z = data_t(inValue[i + 2 * NHITS]);
       }
       count++;
       if(count >= INPUTTRACKSIZE) break;
@@ -73,20 +73,20 @@ int main(int argc, char *argv[]) {
 
   printf("\n---=== Running CSim ===---\n\n");
   printTiming(" - Initialization %d us\n", begin);
-  // runner(inputTracks, outTracks, MIN_DIST, MAX_SHARED);
-  runner(inputTracks, outTracks, MIN_DIST, MAX_SHARED);
+  // runner(inTracks, outTracks, MIN_DIST, MAX_SHARED);
+  runner(inTracks, MIN_DIST, MAX_SHARED);
   printTiming(" - runner() %d us\n", begin);
   printf("\n---=== Finished CSim ===---\n\n");
 
   printf("Pred Outs:\n");
   int counter = 0;
   for (int i = 0; i < INPUTTRACKSIZE; i++) {
-    if(float(outTracks[i].NNScore) < 0.5){
+    if(float(inTracks[i].NNScore) < 0.5){
       continue;
     }
-    printf("ID: %d : %d | NNScore: %f\n", i, counter++, float(outTracks[i].NNScore));
+    printf("ID: %d : %d | NNScore: %f\n", i, counter++, float(inTracks[i].NNScore));
     for(int j = 0; j < NHITS; j++){
-      printf(" %8.2f %8.2f %8.2f\n",float(outTracks[i].hits[j].x), float(outTracks[i].hits[j].y), float(outTracks[i].hits[j].z));
+      printf(" %8.2f %8.2f %8.2f\n",float(inTracks[i].hits[j].x), float(inTracks[i].hits[j].y), float(inTracks[i].hits[j].z));
     }
     printf("\n");
   }
@@ -94,15 +94,15 @@ int main(int argc, char *argv[]) {
   std::ofstream outputFile("../../../../../../tb_files/tb_output.dat");
   if(outputFile.is_open()){
     for (int i = 0; i < INPUTTRACKSIZE; i++) {
-      // printf("outTracks[%d].NNScore == %.3f\n", i, float(outTracks[i].NNScore));
-      if(float(outTracks[i].NNScore) < 0.5){
+      // printf("inTracks[%d].NNScore == %.3f\n", i, float(inTracks[i].NNScore));
+      if(float(inTracks[i].NNScore) < 0.5){
         continue;
       }
-      outputFile << outTracks[i].NNScore << "\n";
+      outputFile << inTracks[i].NNScore << "\n";
       for(int j = 0; j < NHITS; j++){
-        outputFile << outTracks[i].hits[j].x << " ";
-        outputFile << outTracks[i].hits[j].y << " ";
-        outputFile << outTracks[i].hits[j].z << "\n";
+        outputFile << inTracks[i].hits[j].x << " ";
+        outputFile << inTracks[i].hits[j].y << " ";
+        outputFile << inTracks[i].hits[j].z << "\n";
       }
     }
   } else {

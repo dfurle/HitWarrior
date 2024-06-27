@@ -4,7 +4,7 @@ HLS_NAME := SearchKernel
 # xilinx platform to be used
 PLATFORM := xilinx_u250_gen3x16_xdma_4_1_202210_1
 # emulation mode (sw_emu, hw_emu, hw)
-EMU_MODE := sw_emu
+EMU_MODE := hw
 
 ########
 

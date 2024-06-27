@@ -1,6 +1,6 @@
 #include "projectDefines.h"
 
-#include <iostream>
+// #include <iostream>
 
 #define RUN_PIPELINE
 
@@ -40,7 +40,7 @@ void filterLowNN(nnscore_t* in_nn, nnscore_t* out_nn){
 // returns TRKA if trkA survives or TRKB or BOTH
 int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int min_dist, int max_shared){
 // int compare(data_t* trkA_list, int i, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int min_dist, int max_shared){
-  // #pragma HLS INLINE off
+  #pragma HLS INLINE off
   // #pragma HLS PIPELINE
   // #pragma HLS UNROLL
   int nShared = 0;
@@ -85,138 +85,71 @@ int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int 
   }
 }
 
+// void searchHit(data_t* inTracks, int* indexDelete, nnscore_t* in_nn, nnscore_t* out_nn, int min_dist, int max_shared){
 void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int min_dist, int max_shared){
   #pragma HLS INLINE off
-  // #pragma HLS PIPELINE off
+  #pragma HLS PIPELINE off
   // #pragma HLS PIPELINE
-
-  // for(int i = 0; i < INPUTTRACKSIZE; i++){
-  //   // nnscore_t nn = in_nn[i];
-  //   // out_nn[i] = nn;
-  // }
-  int indexDelete[INPUTTRACKSIZE];
-  #pragma HLS ARRAY_PARTITION variable=indexDelete complete
-  // SEARCHHIT:{
-  //   #pragma HLS protocol fixed
-  //   for(int i = 0; i < INPUTTRACKSIZE; i++){
-  //     #pragma HLS UNROLL
-  //   }
-  // }
-
-  // // full array initially ?
-  // data_t tmp[INPUTTRACKSIZE * INPUTTRACKSIZE * NHITS * NPARS];
-  // #pragma HLS ARRAY_PARTITION variable=tmp complete
-  // TMPWRITE:
-  // for(int i = 0; i < INPUTTRACKSIZE; i++){
-  //   #pragma HLS PIPELINE
-  //   for(int j = 0; j < INPUTTRACKSIZE * NHITS * NPARS; j++){
-  //     #pragma HLS UNROLL
-  //     tmp[i*INPUTTRACKSIZE * NHITS * NPARS + j] = inTracks[j];
-  //   }
-  // }
-
-  // data_t trkA_list[INPUTTRACKSIZE * NHITS * NPARS];
-  // #pragma HLS ARRAY_PARTITION variable=trkA_list complete
-  // for(int j = 0; j < INPUTTRACKSIZE * NHITS * NPARS; j++){
-  //   #pragma HLS UNROLL
-  //   trkA_list[j] = inTracks[j];
-  // }
 
   OUTER:
   for(int i = 0; i < INPUTTRACKSIZE; i++){
-    #pragma HLS PIPELINE
-    // #pragma HLS UNROLL
+    // #pragma HLS UNROLL off
+    #pragma HLS PIPELINE off
     nnscore_t nnA = in_nn[i];
-    if(nnA < nnscore_t(0)){
-      indexDelete[i] = 1;
-      continue;
-    } else {
-      indexDelete[i] = 0;
-    }
-
-
-    data_t tmp[INPUTTRACKSIZE * NHITS * NPARS];
-    #pragma HLS ARRAY_PARTITION variable=tmp complete
-    TMPWRITE:
-    for(int j = 0; j < INPUTTRACKSIZE * NHITS * NPARS; j++){
-      #pragma HLS UNROLL
-      tmp[j] = inTracks[j];
-    }
+    nnscore_t final_nn = nnA;
 
     data_t trkA[NHITS * NPARS];
     #pragma HLS ARRAY_PARTITION variable=trkA complete
     TRKA:
     for(int j = 0; j < NHITS * NPARS; j++){
-      #pragma HLS UNROLL
-      trkA[j] = tmp[i*NHITS*NPARS + j];
+      trkA[j] = inTracks[i*NHITS*NPARS + j];
     }
-
-    // data_t tmp[INPUTTRACKSIZE * NHITS * NPARS];
-    // data_t trkA[NHITS * NPARS];
-    // #pragma HLS ARRAY_PARTITION variable=tmp complete
-    // #pragma HLS ARRAY_PARTITION variable=trkA complete
-
-    // TMPWRITE:
-    // for(int k = 0; k < INPUTTRACKSIZE; k++){
-    //   #pragma HLS UNROLL
-    //   for(int j = 0; j < NHITS * NPARS; j++){
-    //     #pragma HLS UNROLL
-    //     tmp[k*NHITS*NPARS + j] = inTracks[k*NHITS*NPARS + j];
-    //     if(i == k)
-    //       trkA[j] = tmp[k*NHITS*NPARS + j];
-    //   }
-    // }
-    
-    // if(i == 82 || i == 84 || i == 66)
-    //   printf("i: %d\n", i);
 
     INNER:
     for(int j = 0; j < INPUTTRACKSIZE; j++){
-      // #pragma HLS PIPELINE off
       // #pragma HLS UNROLL off
-      // #pragma HLS UNROLL
-      #pragma PIPELINE
+      #pragma HLS PIPELINE off
       nnscore_t nnB = in_nn[j];
       if(nnB < nnscore_t(0)){
         continue;
       }
-      // if(i == 82 || i == 84 || i == 66)
-      //   printf(" j: %d\n", j);
-      // int cmpr = compare(trkA, tmp, j, nnA, nnB, min_dist, max_shared);
-      int cmpr = compare(trkA, tmp, j, nnA, nnB, min_dist, max_shared);
+      int cmpr = compare(trkA, inTracks, j, nnA, nnB, min_dist, max_shared);
 
       if(j == i)
         continue;
-
       if(cmpr == COMPARISON::TRKA){
-        // if(i == 82 || i == 84 || i == 66)
-        //   printf("  TRK i_ wins\n", i, j);
       } else if(cmpr == COMPARISON::TRKB){
-        // if(i == 82 || i == 84 || i == 66)
-        //   printf("  TRK _j wins\n", i, j);
-        indexDelete[i] = 1;
+        final_nn = -0.5;
       } else {
-        
+
       }
+    }
+
+    if(nnA < nnscore_t(0)){
+      out_nn[i] = -0.5;
+      continue;
+    } else {
+      out_nn[i] = final_nn;
     }
     // printf("\n");
   }
 
 
-  // WRITEOUT:{
-  //   #pragma HLS protocol fixed
-    WRITEOUTPUT:
-    for(int i = 0; i < INPUTTRACKSIZE; i++){
-      #pragma HLS UNROLL
-      nnscore_t nn = in_nn[i];
-      // printf("del %d = %d\n",i, indexDelete[i]);
-      if(indexDelete[i] == 1){
-        out_nn[i] = -0.5;
-      } else {
-        out_nn[i] = nn;
-      }
-    }
-  // }
+  // // WRITEOUT:{
+  // //   #pragma HLS protocol fixed
+  //   WRITEOUTPUT:
+  //   for(int i = 0; i < INPUTTRACKSIZE; i++){
+  //     // #pragma HLS UNROLL
+  //     #pragma HLS PIPELINE
+  //     nnscore_t nn = in_nn[i];
+  //     // printf("del %d = %d\n",i, indexDelete[i]);
+  //     if(indexDelete[i] == 1){
+  //       out_nn[i] = -0.5;
+  //     } else {
+  //       out_nn[i] = nn;
+  //     }
+  //   }
+  // // }
 
 }
 
@@ -274,6 +207,10 @@ void runner(Track* inTracks, int min_dist, int max_shared){
   #pragma HLS ARRAY_PARTITION variable=midTracks_nn complete
   #pragma HLS ARRAY_PARTITION variable=outTracks_nn complete
 
+  // having this here and passing in, doesnt remove the violations but increases latency and decreases resources
+  // int indexDelete[INPUTTRACKSIZE];
+  // #pragma HLS ARRAY_PARTITION variable=indexDelete complete
+
   int min_dist_read = min_dist;
   int max_shared_read = max_shared;
 
@@ -281,6 +218,7 @@ void runner(Track* inTracks, int min_dist, int max_shared){
   readData(inTracks, inTracks_copy, inTracks_nn);
 
   filterLowNN(inTracks_nn, midTracks_nn);
+  // searchHit(inTracks_copy, indexDelete, midTracks_nn, outTracks_nn, min_dist_read, max_shared_read);
   searchHit(inTracks_copy, midTracks_nn, outTracks_nn, min_dist_read, max_shared_read);
 
   // writeData(outTracks, inTracks_STRUCT, outTracks_nn);

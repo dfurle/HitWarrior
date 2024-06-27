@@ -222,11 +222,12 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
 
   printf("Pred Outs:\n");
+  int counter = 0;
   for (int i = 0; i < INPUTTRACKSIZE; i++) {
     if(float(inTracks[i].NNScore) < 0.5){
       continue;
     }
-    printf("ID: %d | NNScore: %f\n", i, float(inTracks[i].NNScore));
+    printf("ID: %d : Count: %d | NNScore: %f\n", i, counter++, float(inTracks[i].NNScore));
     for(int j = 0; j < NHITS; j++){
       printf(" %d %d %d\n",int(inTracks[i].hits[j].x), int(inTracks[i].hits[j].y), int(inTracks[i].hits[j].z));
     }
