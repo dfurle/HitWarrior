@@ -49,8 +49,6 @@ enum COMPARISON{BOTH, TRKA, TRKB};
 
 extern "C"{
 
-// void runner(Track* inputTracks, int min_dist, int max_shared);
-// void runner(Track* inTracks, Track* outTracks, int min_dist, int max_shared);
 void runner(Track* inTracks, int min_dist, int max_shared);
 
 }

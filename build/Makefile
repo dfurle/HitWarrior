@@ -27,10 +27,11 @@ all: host compile link
 # ---=== Runner Kernel ===---
 # TODO: figure out how to make simpler/seperate makefiles that will build each one, I know that is possible...
 RUNNER_KERNEL := runner
-RUNNER_SRC := ${SRC_KERNELS}/runner/runner.cpp
-RUNNER_CFG := ${SRC_KERNELS}/runner/hls_config.cfg    # this contains the references to .cpp files, the file to be updated aswell
+RUNNER_SRC  := ${SRC_KERNELS}/runner/runner.cpp
+RUNNER_INCL := ${SRC_COMMON}/projectDefines.h
+RUNNER_CFG  := ${SRC_KERNELS}/runner/hls_config.cfg    # this contains the references to .cpp files, the file to be updated aswell
 # TODO: figure out a simpler way, i think there is a --temp-dir flag for `v++` ?
-${RUNNER_KERNEL}.xo: ${RUNNER_SRC} ${RUNNER_CFG}
+${RUNNER_KERNEL}.xo: ${RUNNER_SRC} ${RUNNER_CFG} ${RUNNER_INCL}
 	mkdir -p ./kernels
 	cd ./kernels && \
 	v++ -c --mode hls --config ${RUNNER_CFG} && \
