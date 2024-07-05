@@ -27,3 +27,9 @@ source export.sh        # if running emulation
   - used to generate the datafile from `recoTracks.txt` which wasn't pushed to the github
 - `tb_files/data_converter.ipynb`
   - plots and prints of various tests after running the kernel
+- `nnscore_network/training.ipynb`
+  - retrain the nnscore network, hls4ml seems a bit broken with latest version of keras
+
+## Problems
+
+- nnscore network currently takes up 120% DSP - figure out why or how to reduce

@@ -2,11 +2,28 @@
 
 // #include <iostream>
 
+#include "nnscore_kernel/myproject.h"
+
 #define RUN_PIPELINE
 
 
 extern "C"{
 
+
+void runScoringNetwork(data_t* inTracks, nnscore_t* outScore){
+  for(int i = 0; i < INPUTTRACKSIZE; i++){
+    #pragma HLS PIPELINE
+    input_t inLayer[N_INPUT_1_1];
+    result_t outLayer[N_LAYER_8];
+    #pragma HLS ARRAY_PARITION var=inLayer complete
+    #pragma HLS ARRAY_PARITION var=outLayer complete
+    for(int j = 0; j < NHITS * NPARS; j++){
+      inLayer[j] = inTracks[i*NHITS*NPARS + j];
+    }
+    myproject(inLayer, outLayer);
+    outScore[i] = outLayer[0];
+  }
+}
 
 void filterLowNN(nnscore_t* in_nn, nnscore_t* out_nn){
   #pragma HLS PIPELINE
@@ -128,7 +145,7 @@ void readData(Track* inputTracks, data_t* inTracks_copy, nnscore_t* inTracks_nn)
       inTracks_copy[i*NHITS*NPARS + j*NPARS + 1] = trk.hits[j].y;
       inTracks_copy[i*NHITS*NPARS + j*NPARS + 2] = trk.hits[j].z;
     }
-    inTracks_nn[i] = trk.NNScore;
+    // inTracks_nn[i] = trk.NNScore; // ignore this for now
   }
 }
 
@@ -174,6 +191,8 @@ void runner(Track* inTracks, int min_dist, int max_shared){
 
   // readData(inTracks, inTracks_copy, inTracks_STRUCT, inTracks_nn);
   readData(inTracks, inTracks_copy, inTracks_nn);
+
+  runScoringNetwork(inTracks_copy, inTracks_nn);
 
   filterLowNN(inTracks_nn, midTracks_nn);
   // searchHit(inTracks_copy, indexDelete, midTracks_nn, outTracks_nn, min_dist_read, max_shared_read);
