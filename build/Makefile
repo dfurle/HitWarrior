@@ -66,7 +66,7 @@ HOST_INCLUDE += -I${XILINX_HLS}/include/
 HOST_INCLUDE += -I${SRC_COMMON}/
 HOST_INCLUDE += -I${SRC_HOST}/
 host.exe: $(HOST_SRC)
-	g++ -g -std=c++17 -Wall -O0 $(HOST_SRC) ${HOST_INCLUDE} -o ./host.exe  ${LDFLAGS}
+	g++ -g -std=c++11 -Wall -O0 $(HOST_SRC) ${HOST_INCLUDE} -o ./host.exe  ${LDFLAGS}
 # ---===---===---
 
 

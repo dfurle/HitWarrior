@@ -42,6 +42,8 @@ int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int 
       int distz = z1 - tmp[j*NHITS*NPARS + jj*NPARS + 2];
 
       int dist = distx*distx + disty*disty + distz*distz;
+      if(x1 == 0 && y1 == 0 && z1 == 0) // can just check one of them probably... 
+        continue;
       if(dist < data_t(min_dist)){
         nShared++;
       }
@@ -49,7 +51,9 @@ int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int 
   }
 
   if(nShared >= max_shared){
-    if(nnA >= nnB){ // choose to keep track1 if exactly equal
+    if(nnA == nnB){
+      return COMPARISON::EQUAL;
+    } else if(nnA > nnB){ // choose to keep track1 if nnscores exactly equal
       return COMPARISON::TRKA; // trkA survives
     } else {
       return COMPARISON::TRKB; // trkB survives
@@ -88,9 +92,17 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int min_di
       }
       int cmpr = compare(trkA, inTracks, j, nnA, nnB, min_dist, max_shared);
 
+      // if((i == 260 && j == 346) || (j == 260 && i == 346)){
+      //   printf("%d  %.2f %.2f %.2f | %d \n", i, float(trkA[0]), float(trkA[1]), float(trkA[2]), j);
+      //   printf(">%d\n", cmpr);
+      // }
       if(j == i)
         continue;
-      if(cmpr == COMPARISON::TRKA){
+      if(cmpr == COMPARISON::EQUAL){ // choose the lower index to use
+        if(i > j)
+          final_nn = -0.5;
+      } else if(cmpr == COMPARISON::TRKA){
+
       } else if(cmpr == COMPARISON::TRKB){
         final_nn = -0.5;
       } else {

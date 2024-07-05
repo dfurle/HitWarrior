@@ -2,7 +2,6 @@
 #include <iostream>
 #include <stdlib.h>
 
-#include <chrono>
 #include "projectDefines.h"
 
 
@@ -25,51 +24,40 @@ int main(int argc, char *argv[]) {
 
   // Input hit list to search
   int count = 0;
-  std::ifstream trackFile("formatted_data.csv");
-  if(trackFile.is_open()){
+  std::ifstream trackFile("tb_track_data.dat");
+  std::ifstream scoreFile("tb_NNscore.dat");
+  if(trackFile.is_open() && scoreFile.is_open()){
     // Read the input file
-    std::string hitline;
-    // skip header
-    std::getline(trackFile, hitline);
-    while(true){ // assume it never ends... bad but eh
-      for(int h = 0; h < NHITS; h++){ // 5 hits
-        if(!std::getline(trackFile, hitline)){
-          printf("END OF FILE\n");
-          break;
+    std::string trackLine, scoreLine;
+    while(std::getline(trackFile, trackLine) && std::getline(scoreFile, scoreLine)){
+      std::stringstream linestream(trackLine);
+      std::string s;
+
+      double NNScore = std::stof(scoreLine); // get NN score from the other file
+      inTracks[count].NNScore = nnscore_t(NNScore);
+      printf("WRITING: %d | %f\n", count, float(nnscore_t(NNScore)));
+      // inputTracks[count].flag_delete = ap_int<2>(0);
+
+      // outTracks[count].NNScore = 0;
+      // // outTracks[count].flag_delete = ap_int<2>(0);
+      // for(int i = 0; i < NHITS; i++){
+      //   outTracks[count].hits[i].x = 0;
+      //   outTracks[count].hits[i].y = 0;
+      //   outTracks[count].hits[i].y = 0;
+      // }
+
+      // store it in a float
+      std::vector<double> inValue;
+      while (std::getline(linestream, s, ' ')){
+        inValue.push_back(std::stof(s));
       }
-        std::stringstream linestream(hitline);
-        std::string s;
 
-        std::getline(linestream, s, ',');
-        int trackid = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        int hitid = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        float pt = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        int truth = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        float nnscore = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float x = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float y = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float z = std::stof(s);
-
-        // printf("%d %d :  %.2f %.2f %.2f\n", count, h, x, y, z);
-
-        inTracks[count].hits[h].x = x;
-        inTracks[count].hits[h].y = y;
-        inTracks[count].hits[h].z = z;
-        inTracks[count].NNScore = nnscore_t(nnscore); // redundant but eh
+      // Organize it into hits
+      for(int i = 0; i < NHITS; i++){
+        // printf("Assigning %d : %f %f %f\n", i, inValue[i + 0 * NHITS], inValue[i + 1 * NHITS], inValue[i + 2 * NHITS]);
+        inTracks[count].hits[i].x = data_t(inValue[i + 0 * NHITS]);
+        inTracks[count].hits[i].y = data_t(inValue[i + 1 * NHITS]);
+        inTracks[count].hits[i].z = data_t(inValue[i + 2 * NHITS]);
       }
       count++;
       if(count >= INPUTTRACKSIZE) break;
@@ -77,9 +65,11 @@ int main(int argc, char *argv[]) {
   } else {
     printf("\n\nFailed to open one of the files!!!\n\n\n");
     trackFile.close();
+    scoreFile.close();
     return 0;
   }
   trackFile.close();
+  scoreFile.close();
 
   printf("\n---=== Running CSim ===---\n\n");
   printTiming(" - Initialization %d us\n", begin);
