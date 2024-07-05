@@ -184,8 +184,8 @@ int main(int argc, char *argv[]) {
 
   // Input hit list to search
   int count = 0;
-  std::ifstream trackFile("../tb_files/tb_track_data.dat");
-  std::ifstream scoreFile("../tb_files/tb_NNscore.dat");
+  std::ifstream trackFile("../tb_files/data/tb_track_data.dat");
+  std::ifstream scoreFile("../tb_files/data/tb_NNscore.dat");
   if(trackFile.is_open() && scoreFile.is_open()){
     // Read the input file
     std::string trackLine, scoreLine;
@@ -235,7 +235,7 @@ int main(int argc, char *argv[]) {
   auto begin = std::chrono::high_resolution_clock::now();
   printTiming("Initializing:\n  %d us\n", begin);
 
-  printf(" ┌------- sending 100 tracks\n");
+  printf(" ┌------- sending tracks\n");
   setupRunSearch(program, context, q, inputTracks, outTracks);
   std::cout << " └>Total on FPGA+transfer run\n";
   int timingFPGA = printTiming("%d us\n", begin);
