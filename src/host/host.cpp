@@ -29,17 +29,26 @@ int setupDevice(std::vector<cl::Device>& devices, cl::Device& device){
   cl::Platform::get(&platforms);
   std::cout << "Scanning Platforms" << std::endl;
   std::cout << "number: " << platforms.size() << std::endl;
-  for (size_t i = 0; (i < platforms.size()) & (found_device == false); i++) {
+  for (size_t i = 0; (i < platforms.size()) && (found_device == false); i++) {
     cl::Platform platform = platforms[i];
     std::string platformName = platform.getInfo<CL_PLATFORM_NAME>();
+    std::cout << "Found Platform: " << std::endl;
     std::cout << platformName << std::endl;
     if (platformName == "Xilinx") {
       devices.clear();
       platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR, &devices);
-      if (devices.size()) {
-        device = devices[0];
-        found_device = true;
-        break;
+      std::cout << "number Devices: " << devices.size() << std::endl;
+      
+      for(size_t d = 0; d < devices.size(); d++) {
+        std::string deviceName = devices[0].getInfo<CL_DEVICE_NAME>();
+        std::cout << "Device: (" << d << "): " << deviceName << std::endl;
+        if(deviceName.find("u250") != std::string::npos){ // 'u280' used in hardware, change to what is needed here!!! TODO:
+          device = devices[0];
+          found_device = true;
+          break;
+        } else {
+          devices.erase(devices.begin());
+        }
       }
     }
   }
@@ -52,8 +61,32 @@ int setupDevice(std::vector<cl::Device>& devices, cl::Device& device){
   return 0;
 }
 
-void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in, Track* out)
-{
+
+void runSearch(cl::CommandQueue& q, cl::Kernel& kernel_read, cl::Kernel& kernel_write, Track* ptr_l1, Track* in, cl::Buffer& buffer_l1, size_t in_size, Track* ptr_out, Track* out, cl::Buffer& buffer_out, size_t out_size){
+  auto begin = std::chrono::high_resolution_clock::now();
+
+  memcpy(ptr_l1, in, in_size);
+  printTiming("   - memcpy in %d us\n", begin);
+
+  q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
+  q.enqueueTask(kernel_read);
+  printTiming("   - migrate enqueue to_read %d us\n", begin);
+
+  q.finish();
+  printTiming("   - finish to-read %d us\n", begin);
+
+  q.enqueueTask(kernel_write);
+  q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
+  printTiming("   - migrate enqueue to_write %d us\n", begin);
+
+  q.finish();
+  printTiming("   - finish to_write %d us\n", begin);
+
+  memcpy(out, ptr_out, in_size);
+  // printTiming("   - memcpy out %d us\n", begin);
+}
+
+void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in, Track* out){
   auto begin = std::chrono::high_resolution_clock::now();
 
   // printf("Initialize kernel\n");
@@ -79,53 +112,31 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
   kernel_read.setArg(0, buffer_l1);
   kernel_write.setArg(0, buffer_out);
 
+  printTiming(" - kernel bufs %d us\n", begin);
+
   // We then need to map our OpenCL buffers to get the pointers
   Track *ptr_l1 = (Track *)q.enqueueMapBuffer(buffer_l1, CL_TRUE, CL_MAP_WRITE, 0, in_size);
   Track *ptr_out = (Track *)q.enqueueMapBuffer(buffer_out, CL_TRUE, CL_MAP_READ, 0, out_size);
 
   printTiming(" - mapbuf %d us\n", begin);
 
-  memcpy ( ptr_l1, in, in_size );
+  float totaltime = 0;
+  std::vector<float> timings;
+  int nIterations = 100;
+  for(int i = 0; i < nIterations; i++){
+    printf("Run %dth iteration\n", i);
+    runSearch(q, kernel_read, kernel_write, ptr_l1, in, buffer_l1, in_size, ptr_out, out, buffer_out, out_size);
+    float time = printTiming(" - FINISHED FPGA: %d us\n", begin);
+    timings.push_back(time);
+    totaltime += time;
+  }
+  printf("Total time: %.0f\n", totaltime);
+  printf("Time Per iteration: %.0f\n", totaltime/nIterations);
 
-  printTiming(" - memcpy in %d us\n", begin);
-
-  // Data will be migrated to kernel space
-  q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
-  // Launch the Kernel
-  q.enqueueTask(kernel_read);
-  printTiming(" - enqueue %d us\n", begin);
-  q.finish();
-  printTiming(" - finish %d us\n", begin);
-
-
-  // // Data will be migrated to kernel space
-  // q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
-  // // Launch the Kernel
-  // q.enqueueTask(kernel_read);
-  // printTiming(" - enqueue %d us\n", begin);
-  // q.finish();
-  // printTiming(" - finish %d us\n", begin);
-
-  q.enqueueTask(kernel_write);
-  // The result of the previous kernel execution will need to be retrieved in
-  // order to view the results. This call will transfer the data from FPGA to
-  // source_results vector
-  q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
-  printTiming(" - enqueue2 %d us\n", begin);
-  q.finish();
-  printTiming(" - finish2 %d us\n", begin);
-
-  // q.enqueueTask(kernel_write);
-  // // The result of the previous kernel execution will need to be retrieved in
-  // // order to view the results. This call will transfer the data from FPGA to
-  // // source_results vector
-  // q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
-  // q.finish();
-  // printTiming(" - finish2 %d us\n", begin);
-
-  memcpy ( out, ptr_out, out_size );
-
-  printTiming(" - memcpy out %d us\n", begin);
+  for(int i = 0; i < nIterations; i++){
+    printf("%.0f, ", timings[i]);
+  }
+  printf("\n");
 
   q.enqueueUnmapMemObject(buffer_l1, ptr_l1);
   q.enqueueUnmapMemObject(buffer_out, ptr_out);
@@ -179,7 +190,7 @@ int main(int argc, char *argv[]) {
 
   printf("INITIALIZING DATA\n");
 
-  Track* inputTracks = new Track[INPUTTRACKSIZE];
+  Track* inTracks = new Track[INPUTTRACKSIZE];
   Track* outTracks = new Track[INPUTTRACKSIZE];
 
   // Input hit list to search
@@ -194,9 +205,9 @@ int main(int argc, char *argv[]) {
       std::string s;
 
       double NNScore = std::stof(scoreLine); // get NN score from the other file
-      inputTracks[count].NNScore = NNScore;
-      printf("%f : %f\n", float(inputTracks[count].NNScore), NNScore);
-      // inputTracks[count].flag_delete = ap_int<2>(0);
+      inTracks[count].NNScore = NNScore;
+      printf("%f : %f\n", float(inTracks[count].NNScore), NNScore);
+      // inTracks[count].flag_delete = ap_int<2>(0);
 
       outTracks[count].NNScore = 0;
       // outTracks[count].flag_delete = ap_int<2>(0);
@@ -214,9 +225,9 @@ int main(int argc, char *argv[]) {
 
       // Organize it into hits
       for(int i = 0; i < NHITS; i++){
-        inputTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
-        inputTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
-        inputTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
+        inTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
+        inTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
+        inTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
       }
       count++;
       if(count >= INPUTTRACKSIZE) break;
@@ -235,30 +246,30 @@ int main(int argc, char *argv[]) {
   auto begin = std::chrono::high_resolution_clock::now();
   printTiming("Initializing:\n  %d us\n", begin);
 
-  printf(" ┌------- sending tracks\n");
-  setupRunSearch(program, context, q, inputTracks, outTracks);
-  std::cout << " └>Total on FPGA+transfer run\n";
-  int timingFPGA = printTiming("%d us\n", begin);
-  printf("\n---=== Finished Kernel ===---\n\n");
-  std::cout << std::endl;
+  printf(" ┌------- sending %d tracks\n", INPUTTRACKSIZE);
+  setupRunSearch(program, context, q, inTracks, outTracks);
+  printf(" └>Total on FPGA+transfer run\n");
+  int timingFPGA = printTiming("  > %d us\n", begin);
+  printf("\n---=== Finished Kernel ===---\n\n\n");
 
-  // printf("Pred Outs:\n");
-  // for (int i = 0; i < INPUTTRACKSIZE; i++) {
-  //   if(float(outTracks[i].NNScore) < 0.5){
-  //     break;
-  //   }
-  //   printf("ID: %d | NNScore: %f\n", i, float(outTracks[i].NNScore));
-  //   for(int j = 0; j < NHITS; j++){
-  //     printf(" %d %d %d\n",int(outTracks[i].hits[j].x), int(outTracks[i].hits[j].y), int(outTracks[i].hits[j].z));
-  //   }
-  //   printf("\n");
-  // }
+  printf("Pred Outs:\n");
+  int counter = 0;
+  for (int i = 0; i < INPUTTRACKSIZE; i++) {
+    if(float(inTracks[i].NNScore) < 0.5){
+      continue;
+    }
+    printf("ID: %d : Count: %d | NNScore: %f\n", i, counter++, float(inTracks[i].NNScore));
+    for(int j = 0; j < NHITS; j++){
+      printf(" %d %d %d\n",int(inTracks[i].hits[j].x), int(inTracks[i].hits[j].y), int(inTracks[i].hits[j].z));
+    }
+    printf("\n");
+  }
 
   std::ofstream outputFile("../tb_files/tb_output.dat");
   if(outputFile.is_open()){
     for (int i = 0; i < INPUTTRACKSIZE; i++) {
       if(float(outTracks[i].NNScore) < 0.5){
-        break;
+        continue;
       }
       outputFile << outTracks[i].NNScore << "\n";
       for(int j = 0; j < NHITS; j++){

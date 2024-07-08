@@ -2,6 +2,7 @@
 # name of .xcl file
 HLS_NAME := SearchKernel
 # xilinx platform to be used
+# PLATFORM := xilinx_u280_xdma_201920_3 # on hw
 PLATFORM := xilinx_u250_gen3x16_xdma_4_1_202210_1
 # emulation mode (sw_emu, hw_emu, hw)
 EMU_MODE := sw_emu
@@ -13,7 +14,8 @@ SRC_HOST := $(realpath ../src/host)
 SRC_KERNELS := $(realpath ../src/kernels)
 BASE := $(realpath ../)
 LDFLAGS := -L${XILINX_XRT}/lib
-LDFLAGS += -lxilinxopencl -lxrt_core -lxrt++ -lxrt_coreutil
+# LDFLAGS += -lxilinxopencl -lxrt_core -lxrt++ -lxrt_coreutil
+LDFLAGS += -lxilinxopencl  # dont need the rest of using opencl i think
 # LDFLAGS += -pthread   #doesnt seem to be needed, but if anything breaks try uncomment this first!
 # KERNEL_WORK_DIR := runner_kernel   # TODO: figure out what this was?
 
@@ -69,6 +71,49 @@ ${SEARCH_KERNEL}.xo: ${SEARCH_SRC} ${SEARCH_CONFIG}
 
 
 
+# # USED ON vitis_2021
+# # ---=== Write Data Kernel ===---
+# WRITE_KERNEL := write_data
+# WRITE_SRC := ${SRC_KERNELS}/${WRITE_KERNEL}/${WRITE_KERNEL}.cpp
+# WRITE_CONFIG := ${SRC_KERNELS}/${WRITE_KERNEL}/hls_config.cfg
+# ${WRITE_KERNEL}.xo: ${WRITE_SRC} ${WRITE_CONFIG}
+# 	mkdir -p ./${WRITE_KERNEL}
+# 	cd ./${WRITE_KERNEL} && \
+# 	v++ -c --platform ${PLATFORM} -k ${WRITE_KERNEL} -I${SRC_COMMON} ${WRITE_SRC} -o ${WRITE_KERNEL}.xo && \
+# 	mv  ${WRITE_KERNEL}.xo ..
+	
+# # ---=== Read Data Kernel ===---
+# READ_KERNEL := read_data
+# READ_SRC := ${SRC_KERNELS}/${READ_KERNEL}/${READ_KERNEL}.cpp
+# READ_CONFIG := ${SRC_KERNELS}/${READ_KERNEL}/hls_config.cfg
+# ${READ_KERNEL}.xo: ${READ_SRC} ${READ_CONFIG}
+# 	mkdir -p ./${READ_KERNEL}
+# 	cd ./${READ_KERNEL} && \
+# 	v++ -c --platform ${PLATFORM} -k ${READ_KERNEL} -I${SRC_COMMON} ${READ_SRC} -o ${READ_KERNEL}.xo && \
+# 	mv  ${READ_KERNEL}.xo ..
+
+# # ---=== Filter Low Kernel ===---
+# FILTER_KERNEL := filterLowNN
+# FILTER_SRC := ${SRC_KERNELS}/${FILTER_KERNEL}/${FILTER_KERNEL}.cpp
+# FILTER_CONFIG := ${SRC_KERNELS}/${FILTER_KERNEL}/hls_config.cfg
+# ${FILTER_KERNEL}.xo: ${FILTER_SRC} ${FILTER_CONFIG}
+# 	mkdir -p ./${FILTER_KERNEL}
+# 	cd ./${FILTER_KERNEL} && \
+# 	v++ -c --platform ${PLATFORM} -k ${FILTER_KERNEL} -I${SRC_COMMON} ${FILTER_SRC} -o ${FILTER_KERNEL}.xo && \
+# 	mv ${FILTER_KERNEL}.xo ..
+
+# # ---=== Search Hit Kernel ===---
+# SEARCH_KERNEL := searchHit
+# SEARCH_SRC := ${SRC_KERNELS}/${SEARCH_KERNEL}/${SEARCH_KERNEL}.cpp
+# SEARCH_CONFIG := ${SRC_KERNELS}/${SEARCH_KERNEL}/hls_config.cfg
+# ${SEARCH_KERNEL}.xo: ${SEARCH_SRC} ${SEARCH_CONFIG}
+# 	mkdir -p ./${SEARCH_KERNEL}
+# 	cd ./${SEARCH_KERNEL} && \
+# 	v++ -c --platform ${PLATFORM} -k ${SEARCH_KERNEL} -I${SRC_COMMON} ${SEARCH_SRC} -o ${SEARCH_KERNEL}.xo && \
+# 	mv ${SEARCH_KERNEL}.xo ..
+
+
+
 # TODO: can make csim for each kernel and csim for all kernels combined somehow...
 # csim: ${RUNNER_SRC} ${RUNNER_CFG}
 # 	vitis-run --mode hls --csim --config ${RUNNER_CFG} --work_dir ./kernels/runner
@@ -99,7 +144,7 @@ HOST_INCLUDE += -I${XILINX_HLS}/include/
 HOST_INCLUDE += -I${SRC_COMMON}/
 HOST_INCLUDE += -I${SRC_HOST}/
 host.exe: $(HOST_SRC)
-	g++ -g -std=c++17 -Wall -O0 $(HOST_SRC) ${HOST_INCLUDE} -o ./host.exe  ${LDFLAGS}
+	g++ -g -std=c++11 -Wall -O0 $(HOST_SRC) ${HOST_INCLUDE} -o ./host.exe  ${LDFLAGS}
 # ---===---===---
 
 
