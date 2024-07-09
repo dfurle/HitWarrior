@@ -19,8 +19,8 @@ int main(int argc, char *argv[]) {
 
   printf("INITIALIZING DATA\n");
 
-  Track* inTracks = new Track[INPUTTRACKSIZE];
-  // Track* outTracks = new Track[INPUTTRACKSIZE];
+  Track* inTracks = new Track[MAX_TRACK_SIZE];
+  // Track* outTracks = new Track[MAX_TRACK_SIZE];
 
   // Input hit list to search
   int count = 0;
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
         inTracks[count].hits[i].z = data_t(inValue[i + 2 * NHITS]);
       }
       count++;
-      if(count >= INPUTTRACKSIZE) break;
+      if(count >= MAX_TRACK_SIZE) break;
     }
   } else {
     printf("\n\nFailed to open one of the files!!!\n\n\n");
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
 
   printf("Pred Outs:\n");
   int counter = 0;
-  for (int i = 0; i < INPUTTRACKSIZE; i++) {
+  for (int i = 0; i < MAX_TRACK_SIZE; i++) {
     if(float(inTracks[i].NNScore) < 0.5){
       continue;
     }
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 
   std::ofstream outputFile("../../../../../../tb_files/tb_output.dat");
   if(outputFile.is_open()){
-    for (int i = 0; i < INPUTTRACKSIZE; i++) {
+    for (int i = 0; i < MAX_TRACK_SIZE; i++) {
       // printf("inTracks[%d].NNScore == %.3f\n", i, float(inTracks[i].NNScore));
       if(float(inTracks[i].NNScore) < 0.5){
         continue;

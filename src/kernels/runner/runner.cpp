@@ -11,7 +11,7 @@ extern "C"{
 
 
 void runScoringNetwork(data_t* inTracks, nnscore_t* outScore){
-  for(int i = 0; i < INPUTTRACKSIZE; i++){
+  for(int i = 0; i < MAX_TRACK_SIZE; i++){
     #pragma HLS PIPELINE
     input_t inLayer[N_INPUT_1_1];
     result_t outLayer[N_LAYER_8];
@@ -28,7 +28,7 @@ void runScoringNetwork(data_t* inTracks, nnscore_t* outScore){
 void filterLowNN(nnscore_t* in_nn, nnscore_t* out_nn){
   #pragma HLS PIPELINE
   MAINLOOP:
-  for(int i = 0; i < INPUTTRACKSIZE; i++){
+  for(int i = 0; i < MAX_TRACK_SIZE; i++){
     nnscore_t nn = in_nn[i];
     if(nn < MIN_THRESHOLD){
       nn = -0.5; // flag to not use this in overlap checking
@@ -39,7 +39,7 @@ void filterLowNN(nnscore_t* in_nn, nnscore_t* out_nn){
 
 // returns TRKA if trkA survives or TRKB or BOTH
 int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int min_dist, int max_shared){
-  #pragma HLS INLINE off
+  // #pragma HLS INLINE off
   // #pragma HLS PIPELINE
   // #pragma HLS UNROLL
   int nShared = 0;
@@ -80,13 +80,17 @@ int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int 
   }
 }
 
+//(cycles)|    (ns)   |  Latency | Interval| Count| Pipelined|   BRAM   |     DSP    |      FF     |      LUT     | URAM|
+//  8  218|  1.090e+03|         -|       85|     -|  dataflow|  31 (~0%)|  1994 (16%)|   74397 (2%)|  145086 (8%)|
+// 16  251|  1.255e+03|         -|       93|     -|  dataflow|  31 (~0%)|  2594 (21%)|  156480 (4%)|  253562 (14%)|    -|
+
 void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int min_dist, int max_shared){
   // #pragma HLS INLINE off
   // #pragma HLS PIPELINE off
   // #pragma HLS PIPELINE
 
   OUTER:
-  for(int i = 0; i < INPUTTRACKSIZE; i++){
+  for(int i = 0; i < MAX_TRACK_SIZE; i++){
     // #pragma HLS UNROLL off
     // #pragma HLS PIPELINE off
     nnscore_t nnA = in_nn[i];
@@ -100,7 +104,7 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int min_di
     }
 
     INNER:
-    for(int j = 0; j < INPUTTRACKSIZE; j++){
+    for(int j = 0; j < MAX_TRACK_SIZE; j++){
       // #pragma HLS UNROLL off
       // #pragma HLS PIPELINE off
       nnscore_t nnB = in_nn[j];
@@ -136,8 +140,9 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int min_di
 
 void readData(Track* inputTracks, data_t* inTracks_copy, nnscore_t* inTracks_nn){
   READ:
-  for(int i=0; i < INPUTTRACKSIZE; i++) {
-    #pragma HLS UNROLL
+  for(int i=0; i < MAX_TRACK_SIZE; i++) {
+    // #pragma HLS UNROLL
+    #pragma HLS PIPELINE
     Track trk = inputTracks[i];
     for(int j=0; j < NHITS; j++){
       // #pragma HLS UNROLL
@@ -151,8 +156,9 @@ void readData(Track* inputTracks, data_t* inTracks_copy, nnscore_t* inTracks_nn)
 
 void writeData(Track* outTracks, nnscore_t* outTracks_nn){
   WRITE:
-  for(int i=0; i < INPUTTRACKSIZE; i++) {
-    #pragma HLS UNROLL
+  for(int i=0; i < MAX_TRACK_SIZE; i++) {
+    // #pragma HLS UNROLL
+    #pragma HLS PIPELINE
     nnscore_t nn = outTracks_nn[i];
     // Track trk = inTracks_STRUCT[i];
     // if(nn > nnscore_t(0))
@@ -172,16 +178,15 @@ void runner(Track* inTracks, int min_dist, int max_shared){
   #pragma HLS STABLE variable=min_dist
   #pragma HLS STABLE variable=max_shared
   
-
-  data_t inTracks_copy[INPUTTRACKSIZE * NHITS * NPARS];
+  data_t inTracks_copy[MAX_TRACK_SIZE * NHITS * NPARS];
   #pragma HLS ARRAY_PARTITION variable=inTracks_copy complete
 
-  // Track inTracks_STRUCT[INPUTTRACKSIZE];
+  // Track inTracks_STRUCT[MAX_TRACK_SIZE];
   // #pragma HLS ARRAY_PARTITION variable=inTracks_STRUCT complete
 
-  nnscore_t inTracks_nn[INPUTTRACKSIZE];
-  nnscore_t midTracks_nn[INPUTTRACKSIZE];
-  nnscore_t outTracks_nn[INPUTTRACKSIZE];
+  nnscore_t inTracks_nn[MAX_TRACK_SIZE];
+  nnscore_t midTracks_nn[MAX_TRACK_SIZE];
+  nnscore_t outTracks_nn[MAX_TRACK_SIZE];
   #pragma HLS ARRAY_PARTITION variable=inTracks_nn complete
   #pragma HLS ARRAY_PARTITION variable=midTracks_nn complete
   #pragma HLS ARRAY_PARTITION variable=outTracks_nn complete
