@@ -14,21 +14,21 @@ void myproject(
     #pragma HLS INTERFACE ap_vld port=input_layer,layer9_out 
     #pragma HLS PIPELINE 
 
-#ifndef __SYNTHESIS__
-    static bool loaded_weights = false;
-    if (!loaded_weights) {
-        // hls-fpga-machine-learning insert load weights
-        nnet::load_weights_from_txt<model_default_t, 240>(w2, "w2.txt");
-        nnet::load_weights_from_txt<model_default_t, 16>(b2, "b2.txt");
-        nnet::load_weights_from_txt<model_default_t, 256>(w4, "w4.txt");
-        nnet::load_weights_from_txt<model_default_t, 16>(b4, "b4.txt");
-        nnet::load_weights_from_txt<model_default_t, 128>(w6, "w6.txt");
-        nnet::load_weights_from_txt<model_default_t, 8>(b6, "b6.txt");
-        nnet::load_weights_from_txt<model_default_t, 8>(w8, "w8.txt");
-        nnet::load_weights_from_txt<model_default_t, 1>(b8, "b8.txt");
-        loaded_weights = true;
-    }
-#endif
+// #ifndef __SYNTHESIS__
+//     static bool loaded_weights = false;
+//     if (!loaded_weights) {
+//         // hls-fpga-machine-learning insert load weights
+//         nnet::load_weights_from_txt<model_default_t, 240>(w2, "w2.txt");
+//         nnet::load_weights_from_txt<model_default_t, 16>(b2, "b2.txt");
+//         nnet::load_weights_from_txt<model_default_t, 256>(w4, "w4.txt");
+//         nnet::load_weights_from_txt<model_default_t, 16>(b4, "b4.txt");
+//         nnet::load_weights_from_txt<model_default_t, 128>(w6, "w6.txt");
+//         nnet::load_weights_from_txt<model_default_t, 8>(b6, "b6.txt");
+//         nnet::load_weights_from_txt<model_default_t, 8>(w8, "w8.txt");
+//         nnet::load_weights_from_txt<model_default_t, 1>(b8, "b8.txt");
+//         loaded_weights = true;
+//     }
+// #endif
 
     // ****************************************
     // NETWORK INSTANTIATION

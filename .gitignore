@@ -9,3 +9,4 @@ nnscore_network/formatted_data.csv
 tb_files/tb_output.dat
 tb_files/data/recoTracks.txt
 tb_files/data/formatted_data.csv
+zReportReader/data/

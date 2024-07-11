@@ -8,10 +8,7 @@
 // #include "hls_stream.h"
 
 // #define SIZE_LIST 10
-
-// #define MAX_TRACK_SIZE 100
-// #define MAX_TRACK_SIZE 128
-#define MAX_TRACK_SIZE 32
+#define MAX_TRACK_SIZE 64
 #define NHITS 5
 #define NPARS 3
 #define MIN_DIST 3000 // ~30x30 area // max distance is 1000

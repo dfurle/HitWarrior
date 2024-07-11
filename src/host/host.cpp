@@ -79,8 +79,9 @@ void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue
   int narg = 0;
   kernel.setArg(narg++, buffer_l1);
   // kernel.setArg(narg++, buffer_out);
-  kernel.setArg(narg++, MIN_DIST);
+  // kernel.setArg(narg++, MIN_DIST);
   kernel.setArg(narg++, MAX_SHARED);
+  kernel.setArg(narg++, 32);
 
   // We then need to map our OpenCL buffers to get the pointers
   Track *ptr_l1 = (Track *)q.enqueueMapBuffer(buffer_l1, CL_TRUE, CL_MAP_WRITE, 0, in_size);
@@ -163,50 +164,61 @@ int main(int argc, char *argv[]) {
 
   // Input hit list to search
   int count = 0;
-  std::ifstream trackFile("../tb_files/data/tb_track_data.dat");
-  std::ifstream scoreFile("../tb_files/data/tb_NNscore.dat");
-  if(trackFile.is_open() && scoreFile.is_open()){
+  std::ifstream trackFile("../tb_files/data/formatted_data.csv");
+  if(trackFile.is_open()){
     // Read the input file
-    std::string trackLine, scoreLine;
-    while(std::getline(trackFile, trackLine) && std::getline(scoreFile, scoreLine)){
-      std::stringstream linestream(trackLine);
-      std::string s;
-
-      double NNScore = std::stof(scoreLine); // get NN score from the other file
-      inTracks[count].NNScore = NNScore;
-      // inTracks[count].flag_delete = ap_int<2>(0);
-
-      // outTracks[count].NNScore = 0;
-      // outTracks[count].flag_delete = ap_int<2>(0);
-      // for(int i = 0; i < NHITS; i++){
-      //   outTracks[count].hits[i].x = 0;
-      //   outTracks[count].hits[i].y = 0;
-      //   outTracks[count].hits[i].y = 0;
-      // }
-
-      // store it in a float
-      std::vector<double> inValue;
-      while (std::getline(linestream, s, ' ')){
-        inValue.push_back(std::stof(s));
+    std::string hitline;
+    // skip header
+    std::getline(trackFile, hitline);
+    while(true){ // assume it never ends... bad but eh
+      for(int h = 0; h < NHITS; h++){ // 5 hits
+        if(!std::getline(trackFile, hitline)){
+          printf("END OF FILE\n");
+          break;
       }
+        std::stringstream linestream(hitline);
+        std::string s;
 
-      // Organize it into hits
-      for(int i = 0; i < NHITS; i++){
-        inTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
-        inTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
-        inTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
+        std::getline(linestream, s, ',');
+        int trackid = std::stoi(s);
+
+        std::getline(linestream, s, ',');
+        int hitid = std::stoi(s);
+
+        std::getline(linestream, s, ',');
+        float pt = std::stof(s);
+
+        std::getline(linestream, s, ',');
+        int truth = std::stoi(s);
+
+        std::getline(linestream, s, ',');
+        float nnscore = std::stof(s);
+
+        std::getline(linestream, s, ',');
+        float x = std::stof(s);
+
+        std::getline(linestream, s, ',');
+        float y = std::stof(s);
+
+        std::getline(linestream, s, ',');
+        float z = std::stof(s);
+
+        // printf("%d %d :  %.2f %.2f %.2f\n", count, h, x, y, z);
+
+        inTracks[count].hits[h].x = x;
+        inTracks[count].hits[h].y = y;
+        inTracks[count].hits[h].z = z;
+        inTracks[count].NNScore = nnscore_t(nnscore); // redundant but eh
       }
       count++;
       if(count >= MAX_TRACK_SIZE) break;
     }
   } else {
-    printf("\n\nFailed to open input files!\n\n");
+    printf("\n\nFailed to open one of the files!!!\n\n\n");
     trackFile.close();
-    scoreFile.close();
     return 0;
   }
   trackFile.close();
-  scoreFile.close();
 
   printf("\n---=== Running Kernel ===---\n\n");
 
