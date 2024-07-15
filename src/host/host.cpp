@@ -161,6 +161,61 @@ int main(int argc, char *argv[]) {
   Track* inTracks = new Track[MAX_TRACK_SIZE];
   // Track* outTracks = new Track[MAX_TRACK_SIZE];
 
+  // OLD DATAFILE:
+  // // Input hit list to search
+  // int count = 0;
+  // // std::ifstream trackFile("../tb_files/data/formatted_data.csv");
+  // std::ifstream trackFile("../tb_files/data/tb_track_data.dat");
+  // std::ifstream scoreFile("../tb_files/data/tb_NNscore.dat");
+  // if(trackFile.is_open() && scoreFile.is_open()){
+  //   // Read the input file
+  //   std::string trackLine, scoreLine;
+  //   while(std::getline(trackFile, trackLine) && std::getline(scoreFile, scoreLine)){
+  //     std::stringstream linestream(trackLine);
+  //     std::string s;
+
+  //     double NNScore = std::stof(scoreLine); // get NN score from the other file
+  //     inTracks[count].NNScore = NNScore;
+  //     // inTracks[count].flag_delete = ap_int<2>(0);
+
+  //     // outTracks[count].NNScore = 0;
+  //     // outTracks[count].flag_delete = ap_int<2>(0);
+  //     // for(int i = 0; i < NHITS; i++){
+  //     //   outTracks[count].hits[i].x = 0;
+  //     //   outTracks[count].hits[i].y = 0;
+  //     //   outTracks[count].hits[i].y = 0;
+  //     // }
+
+  //     // store it in a float
+  //     std::vector<double> inValue;
+  //     while (std::getline(linestream, s, ' ')){
+  //       inValue.push_back(std::stof(s));
+  //     }
+
+  //     // Organize it into hits
+  //     for(int i = 0; i < NHITS; i++){
+  //       inTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
+  //       inTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
+  //       inTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
+  //     }
+  //     count++;
+  //     if(count >= MAX_TRACK_SIZE) break;
+  //   }
+  // } else {
+  //   printf("\n\nFailed to open input files!\n\n");
+  //   trackFile.close();
+  //   scoreFile.close();
+  //   return 0;
+  // }
+  // trackFile.close();
+  // scoreFile.close();
+
+
+
+
+
+
+
 
   // Input hit list to search
   int count = 0;

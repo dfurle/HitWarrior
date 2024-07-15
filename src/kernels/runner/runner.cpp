@@ -31,14 +31,14 @@ void filterLowNN(nnscore_t* in_nn){
 // returns TRKA if trkA survives or TRKB or BOTH
 int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int max_shared){
   // #pragma HLS INLINE off
-  #pragma HLS PIPELINE
+  // #pragma HLS PIPELINE
   // #pragma HLS UNROLL
   int nShared = 0;
   int ii = 0;
   int jj = 0;
   INNERLOOP:
   for(ii = 0; ii < NHITS; ii++){
-    #pragma HLS PIPELINE
+    // #pragma HLS PIPELINE
     // #pragma HLS UNROLL
     // #pragma HLS UNROLL off
     data_t x1 = trkA[ii*NPARS + 0];
@@ -46,7 +46,7 @@ int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int 
     data_t z1 = trkA[ii*NPARS + 2];
     INNER2LOOP:
     for(jj = 0; jj < NHITS; jj++){
-      #pragma HLS PIPELINE
+      // #pragma HLS PIPELINE
       // #pragma HLS UNROLL
       // #pragma HLS UNROLL off
       if(x1 == 0) // can just check one of them probably... 
@@ -86,31 +86,6 @@ int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int 
   }
 }
 
-//(cycles)|    (ns)   |  Latency | Interval| Count| Pipelined|   BRAM   |     DSP    |      FF     |      LUT     | URAM|
-//  8  218|  1.090e+03|         -|       85|     -|  dataflow|  31 (~0%)|  1994 (16%)|   74397 (2%)|  145086 (8%)|
-// 16  251|  1.255e+03|         -|       93|     -|  dataflow|  31 (~0%)|  2594 (21%)|  156480 (4%)|  253562 (14%)|    -|
-
-
-//(cycles)|    (ns)   |  Latency | Interval| Count| Pipelined|   BRAM   |     DSP    |      FF     |      LUT     | URAM|
-// 32 1413|  7.065e+03|         -|      646|     -|  dataflow|  31 (~0%)|  3794 (30%)|  431324 (12%)|  447297 (25%)|    -| // no pipeline, seperate loops
-// 32 2480|  1.240e+04|         -|     2359|     -|  dataflow|  17 (~0%)|  3794 (30%)|  433730 (12%)|  483554 (27%)|    -| // pipeline, joint loops
-// 32 3073|  1.639e+04|         -|     2359|     -|  dataflow|  17 (~0%)|  3794 (30%)|  449302 (13%)|  448775 (25%)|    -| // pipeline, even more joint loops?
-// 32  911|  4.555e+03|         -|      646|     -|  dataflow|  31 (~0%)|  3794 (30%)|  441191 (12%)|  461142 (26%)|    -| // single input to funcs, reading/writing pipelined
-// 32  814|  4.070e+03|         -|      549|     -|  dataflow|  31 (~0%)|  1394 (11%)|  467048 (13%)|  305681 (17%)|    -| // switched to check equality, and 2x pipeline rather than 2x unroll in comp
-// 32  911|  4.555e+03|         -|      646|     -|  dataflow|  31 (~0%)|  3794 (30%)|  441191 (12%)|  461142 (26%)|    -| // 1st PIPELINE -> 2nd UNROLL
-// 32  911|  4.555e+03|         -|      646|     -|  dataflow|  31 (~0%)|  3794 (30%)|  441191 (12%)|  461142 (26%)|    -| // 1st UNROLL -> 2nd PIPELINE
-// 32  814|  4.070e+03|         -|      549|     -|  dataflow|  31 (~0%)|  1394 (11%)|  467048 (13%)|  305681 (17%)|    -| // equality check, 2x unroll
-// 32  314|  1.570e+03|         -|      109|     -|  dataflow|  31 (~0%)|  1394 (11%)|  444709 (12%)|  340269 (19%)|    -| // remove pipeline from searchHit
-
-
-//         (cycles)|    (ns)   |  Latency | Interval| Count| Pipelined|   BRAM   |     DSP    |      FF     |      LUT     | URAM|
-// 100/30m    13571|  6.786e+04|         -|    13102|     -|  dataflow|  31 (~0%)|  1394 (11%)|  247468 (7%)|  254843 (14%)|    -|
-// 100/? m     1373|  6.865e+03|         -|      904|     -|  dataflow|  31 (~0%)|  1394 (11%)|  3759937 (108%)|  1422094 (82%)|    -| // With DATAFLOW 
-// 100/2.7m  302670|  1.513e+06|         -|   302671|     -|        no|  31 (~0%)|  1394 (11%)|   68850 (1%)|  102224 (5%)|    -| // remove DATAFLOW
-// 100/3.2m   13870|  6.935e+04|         -|    13871|     -|        no|  31 (~0%)|  1394 (11%)|   96864 (2%)|  104724 (6%)|    -|
-// 100/3m     13870|  6.935e+04|         -|    13871|     -|        no|  31 (~0%)|  1394 (11%)|   96864 (2%)|  104724 (6%)|    -|
-
-
 
 void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_shared, int num_tracks){
   #pragma HLS INLINE off
@@ -118,10 +93,10 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
   // #pragma HLS PIPELINE
 
 
-
+  OUTER:
   for(int i = 0; i < MAX_TRACK_SIZE; i++){
     #pragma HLS PIPELINE
-    // #pragma HLS UNROLL off
+    // #pragma HLS UNROLL off // doesnt seem to have a difference? probably default PIPELINE
     // #pragma HLS PIPELINE off
 
     if(i > num_tracks)
@@ -239,6 +214,7 @@ void runner(Track* inTracks, int max_shared, int num_tracks){
     input_t inLayer[N_INPUT_1_1];
     #pragma HLS ARRAY_PARTITION var=inLayer complete
     for(int j = 0; j < NHITS * NPARS; j++){
+      #pragma HLS PIPELINE
       inLayer[j] = inTracks_copy[i*NHITS*NPARS + j];
     }
     nnscore_t nn = 0;
