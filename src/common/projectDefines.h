@@ -8,7 +8,7 @@
 // #include "hls_stream.h"
 
 // #define SIZE_LIST 10
-#define MAX_TRACK_SIZE 64
+#define MAX_TRACK_SIZE 16
 #define NHITS 5
 #define NPARS 3
 #define MIN_DIST 3000 // ~30x30 area // max distance is 1000
@@ -25,6 +25,7 @@ typedef ap_fixed<SCORE_SIZE, 2> nnscore_t;
 // typedef ap_axiu<HIT_SIZE*3*NHITS+SCORE_SIZE,0,0,0> Track_t;
 // typedef ap_axiu<HIT_SIZE,0,0,0> stream_t;
 // typedef ap_axiu<3,0,0,0> done_t;
+
 
 struct Hit{
   data_t x = 0;
@@ -46,7 +47,10 @@ enum COMPARISON{BOTH, TRKA, TRKB, EQUAL};
 
 extern "C"{
 
-void runner(Track* inTracks, int min_dist, int max_shared);
+void runner(Track* inTracks, int max_shared, int num_tracks);
+
+// another algorithm:
+// void runner(Track* inTracks, Track* outTracks, int max_shared, int num_tracks);
 
 }
 

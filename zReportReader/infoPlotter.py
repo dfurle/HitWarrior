@@ -36,6 +36,8 @@ class FitFunc:
     elif f_str == 'exp':
       self.f = exp
       self.format_string = "{p}*exp({p}x) R2={r}".format(**fmt)
+      if self.p0 is None: # default to this so it has a possibility to fit it
+        self.p0 = [1,0]
     else:
       print("Cannot find function {}, please define it in infoPlotter.py and add to FitFunc check".format(f_str))
 
@@ -128,7 +130,7 @@ class TrackVSPlot:
 
     if colors:
       self.info[name].colors = colors
-    else:
+    elif selections:
       self.info[name].colors = [self.default_color] * len(selections)
 
     if fits:
@@ -143,7 +145,8 @@ class TrackVSPlot:
     if ylims:
       self.info[name].ylims = ylims
 
-    self.info[name].selections = selections
+    if selections:
+      self.info[name].selections = selections
 
   def setup_resources(self, colors:list=None, fits:list=None, ax:Axes=None, final_call=(lambda x : x.ax.set_ylabel("% Resource")), selections:list=["DSP %", "FF %", "LUT %"], ylims=None):
     self._setup("resources", colors, fits, ax, final_call, selections, ylims)
@@ -162,8 +165,20 @@ class TrackVSPlot:
     fit_funcs choices: ["linear", "quad", "exp"]
     '''
     assert name is not None
-    assert selections is not None
+    # assert selections is not None # allow re-updating the same entry
     self._setup(name, colors, fits, ax, final_call, selections, ylims)
+    return self
+  
+  def defaults(self, axRes, axLat, axComp, axDSP, axFF, axLUT, colors=["red", "green", "blue"]):
+    resYLabel = (lambda x : x.ax.set_ylabel("% Resource"))
+
+    self.setup_resources(colors=colors, fits=["linear", "linear", "linear"], ax=axRes)
+    self.setup_latency(fits=["quad"], ax=axLat)
+    self.setup_compile(fits=["quad"], ax=axComp)
+    self.setup(name="DSP", fits=["linear"], final_call=resYLabel, ax=axDSP, selections=["DSP %"])
+    self.setup(name="FF", fits=["linear"], final_call=resYLabel, ax=axFF, selections=["FF %"])
+    self.setup(name="LUT", fits=["linear"], final_call=resYLabel, ax=axLUT, selections=["LUT %"])
+
     return self
 
   def plot(self, xlims: list = [0,None]):
@@ -176,19 +191,25 @@ class TrackVSPlot:
         
       for s, c, ff in zip(info.selections, info.colors, info.fits):
         assert isinstance(ff, FitFunc)
-        d = self.data[s]
-        info.ax.scatter(self.track_sizes, d, label=str(self.ID) + " " + s, edgecolor='black', color=c, zorder=3, s=20)
-        lastx = self.track_sizes[-1]
+        track_sizes = np.array(self.track_sizes)
+        if xlims[1] is None:
+          d = self.data[s]
+        else: # limit x for plotting and data
+          track_sizes = track_sizes[track_sizes <= xlims[1]]
+          d = self.data[self.data["Track Size"] <= xlims[1]][s]
+
+        info.ax.scatter(track_sizes, d, label=str(self.ID) + " " + s, edgecolor='black', color=c, zorder=3, s=20)
+        lastx = track_sizes[-1]
         lasty = d.to_numpy()[-1]
         if xlims[1] is None:
           xlims[1] = lastx
-        if len(self.track_sizes) > 2:
+        if (len(track_sizes) > 1 and ff.name == 'linear') or len(track_sizes) > 2:
           f = ff.f
-          pars, cov = curve_fit(f, self.track_sizes, d, ff.p0)
+          pars, cov = curve_fit(f, track_sizes, d, ff.p0)
           x = np.linspace(xlims[0], xlims[1], 100)
           # print(pars)
           y = f(x, *pars)
-          yp = f(self.track_sizes, *pars)
+          yp = f(track_sizes, *pars)
           SSres = np.sum(np.power(yp - d.to_numpy(),2))
           SStot = np.sum(np.power(yp - d.mean(), 2))
           if abs(SStot) < 0.0001: # so that it doesnt divide by a small number and break
