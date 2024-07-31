@@ -4,6 +4,8 @@
 #include <stdlib.h>
 
 #include "projectDefines.h"
+#include "data_reader.h"
+#include "host.h"
 
 // #include "ap_fixed.h"
 
@@ -17,104 +19,117 @@ int printTiming(std::string str, std::chrono::_V2::system_clock::time_point & be
   return diffus;
 }
 
-static const std::string error_message =
-    "Error: Result mismatch:\n"
-    "i = %d CPU result = %d Device result = %d\n";
 
-int setupDevice(std::vector<cl::Device>& devices, cl::Device& device){
-  bool found_device = false;
-  // traversing all Platforms To find Xilinx Platform and targeted
-  // Device in Xilinx Platform
-  std::vector<cl::Platform> platforms;
-  cl::Platform::get(&platforms);
-  std::cout << "Scanning Platforms" << std::endl;
-  std::cout << "number: " << platforms.size() << std::endl;
-  for (size_t i = 0; (i < platforms.size()) & (found_device == false); i++) {
-    cl::Platform platform = platforms[i];
-    std::string platformName = platform.getInfo<CL_PLATFORM_NAME>();
-    std::cout << platformName << std::endl;
-    if (platformName == "Xilinx") {
-      devices.clear();
-      platform.getDevices(CL_DEVICE_TYPE_ACCELERATOR, &devices);
-      if (devices.size()) {
-        device = devices[0];
-        found_device = true;
-        break;
-      }
-    }
-  }
-  if (found_device == false) {
-    std::cout << "Error: Unable to find Target Device "
-              << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-    return EXIT_FAILURE;
-  }
-  devices.resize(1);
-  return 0;
-}
-
-// void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in, Track* out)
-void setupRunSearch(cl::Program& program, cl::Context& context, cl::CommandQueue& q, Track* in)
-{
+void runSearch(CKernel& hw, Track* in, int* nTracks, nnscore_t* outScores){
   auto begin = std::chrono::high_resolution_clock::now();
 
-  // printf("Initialize kernel\n");
-  cl::Kernel kernel(program, "runner");
+  hw.write_mem(0, in);
+  hw.write_mem(1, nTracks);
+
+  // memcpy ( ptr_l1, in, in_size );
+  // memcpy ( ptr_ts, inTracks, in_ts_size );
+
+  printTiming(" - memcpy in %d us\n", begin);
+
+  // q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
+  // q.enqueueMigrateMemObjects({buffer_ts}, 0);
+  // q.enqueueTask(kernel);
+  // q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
+  // q.enqueueMigrateMemObjects({buffer_l1}, CL_MIGRATE_MEM_OBJECT_HOST);
+
+  hw.migrate_buf(0);
+  hw.migrate_buf(1);
+  hw.enqueue_kernel();
+  hw.migrate_buf(2, false);
+
+  printTiming(" - migrate %d us\n", begin);
+  // q.finish();
+  hw.finish();
+  printTiming(" - finish %d us\n", begin);
+
+  // memcpy ( outScores, ptr_out, out_size );
+  // memcpy ( in, ptr_l1, in_size );
+  hw.read_mem(2, outScores);
+
+  printTiming(" - memcpy out %d us\n", begin);
+
+}
+
+void setupRunSearch(CKernel& hw, Track* in, int* nTracks, nnscore_t* outScores){
+  auto begin = std::chrono::high_resolution_clock::now();
+
+  hw.setup_kernel("runner");
   printTiming(" - kernel init %d us\n", begin);
 
   // Compute the size of array in bytes
-  size_t in_size = sizeof(Track) * MAX_TRACK_SIZE;
-  // size_t out_size = sizeof(Track) * MAX_TRACK_SIZE;
+  size_t in_size = sizeof(Track) * MAX_TRACK_SIZE * BATCH_SIZE;
+  size_t in_ts_size = sizeof(int) * BATCH_SIZE;
+  size_t out_size = sizeof(nnscore_t) * BATCH_SIZE;
 
   // std::cout << "in_hist_size:  " << in_size << std::endl;
   // std::cout << "out_size: " << out_size << std::endl;
   // printf("\n");
 
-  // These commands will allocate memory on the Device. The cl::Buffer objects
-  // can be used to reference the memory locations on the device.
-  // printf("Initializing Buffers\n");
-  cl::Buffer buffer_l1(context, CL_MEM_READ_ONLY, in_size);
-  // cl::Buffer buffer_out(context, CL_MEM_WRITE_ONLY, out_size);
+  hw.create_buffer(in_size,    0, CL_MEM_READ_ONLY, CL_MAP_WRITE);
+  hw.create_buffer(in_ts_size, 1, CL_MEM_READ_ONLY, CL_MAP_WRITE);
+  hw.create_buffer(out_size,   2, CL_MEM_WRITE_ONLY, CL_MAP_READ);
+  hw.get_kernel()->setArg(3, MAX_SHARED);
+  hw.get_kernel()->setArg(4, BATCH_SIZE);
 
-  // set the kernel Arguments
-  int narg = 0;
-  kernel.setArg(narg++, buffer_l1);
+  // // These commands will allocate memory on the Device. The cl::Buffer objects
+  // // can be used to reference the memory locations on the device.
+  // // printf("Initializing Buffers\n");
+  // cl::Buffer buffer_l1(*hw.context, CL_MEM_READ_ONLY, in_size);
+  // cl::Buffer buffer_ts(*hw.context, CL_MEM_READ_ONLY, in_ts_size);
+  // cl::Buffer buffer_out(*hw.context, CL_MEM_WRITE_ONLY, out_size);
+
+  // // set the kernel Arguments
+  // int narg = 0;
+  // kernel.setArg(narg++, buffer_l1);
+  // kernel.setArg(narg++, buffer_ts);
   // kernel.setArg(narg++, buffer_out);
-  // kernel.setArg(narg++, MIN_DIST);
-  kernel.setArg(narg++, MAX_SHARED);
-  kernel.setArg(narg++, 32);
+  // kernel.setArg(narg++, BATCH_SIZE);
+  // kernel.setArg(narg++, MAX_SHARED);
 
-  // We then need to map our OpenCL buffers to get the pointers
-  Track *ptr_l1 = (Track *)q.enqueueMapBuffer(buffer_l1, CL_TRUE, CL_MAP_WRITE, 0, in_size);
+  // // We then need to map our OpenCL buffers to get the pointers
+  // Track *ptr_l1 = (Track *)q.enqueueMapBuffer(buffer_l1, CL_TRUE, CL_MAP_WRITE, 0, in_size);
+  // Track *ptr_ts = (Track *)q.enqueueMapBuffer(buffer_ts, CL_TRUE, CL_MAP_WRITE, 0, in_ts_size);
   // Track *ptr_out = (Track *)q.enqueueMapBuffer(buffer_out, CL_TRUE, CL_MAP_READ, 0, out_size);
 
   printTiming(" - mapbuf %d us\n", begin);
 
-  memcpy ( ptr_l1, in, in_size );
 
-  printTiming(" - memcpy in %d us\n", begin);
+  float totaltime = 0;
+  std::vector<float> timings;
+  int nIterations = 100;
+  for(int i = 0; i < nIterations; i++){
+    printf("Run %dth iteration\n", i);
+    runSearch(hw, in, nTracks, outScores);
+    float time = printTiming(" - FINISHED FPGA: %d us\n", begin);
+    timings.push_back(time);
+    totaltime += time;
+  }
+  printf("Total time: %.0f\n", totaltime);
+  printf("Time Per iteration: %.0f\n", totaltime/nIterations);
 
-  q.enqueueMigrateMemObjects({buffer_l1}, 0); // 0 means from host
-  q.enqueueTask(kernel);
-  // q.enqueueMigrateMemObjects({buffer_out}, CL_MIGRATE_MEM_OBJECT_HOST);
-  q.enqueueMigrateMemObjects({buffer_l1}, CL_MIGRATE_MEM_OBJECT_HOST);
-  printTiming(" - migrate %d us\n", begin);
-  q.finish();
-  printTiming(" - finish %d us\n", begin);
+  for(int i = 0; i < nIterations; i++){
+    printf("%.0f, ", timings[i]);
+  }
+  printf("\n");
+  
 
-  // memcpy ( out, ptr_out, out_size );
-  memcpy ( in, ptr_l1, in_size );
-
-  printTiming(" - memcpy out %d us\n", begin);
-
-  q.enqueueUnmapMemObject(buffer_l1, ptr_l1);
+  // q.enqueueUnmapMemObject(buffer_l1, ptr_l1);
   // q.enqueueUnmapMemObject(buffer_out, ptr_out);
+  hw.unmap(0);
+  hw.unmap(1);
+  hw.unmap(2);
 
-  q.finish();
+  // q.finish();
+  hw.finish();
 
   printTiming(" - finish2 %d us\n", begin);
 
 }
-
 
 int main(int argc, char *argv[]) {
 
@@ -123,166 +138,32 @@ int main(int argc, char *argv[]) {
     std::cout << "Usage: " << argv[0] << "<xclbin>" << std::endl;
     return EXIT_FAILURE;
   }
-  // Creates a vector of DATA_SIZE elements with an initial value of 10 and 32
-  // using customized allocator for getting buffer alignment to 4k boundary
-  std::vector<cl::Device> devices;
-  cl::Device device;
-  if(setupDevice(devices, device) == EXIT_FAILURE){
-    return EXIT_FAILURE;
-  }
 
-  // Creating Context and Command Queue for selected device
-  cl::Context context(device);
-  cl::CommandQueue q(context, device, CL_QUEUE_PROFILING_ENABLE);
+  CKernel hw;
+  printf("setting up device\n");
+  hw.setup_device("u250");
+  printf("loading xcl\n");
+  hw.load_xclbin(argv[1]);
+  // hw.setup_kernel("runner");
 
-  // ======= Found Device =======================================================================================
-
-  // Load rotation xclbin
-  char *rxclbinFilename = argv[1];
-  std::cout << "Loading: '" << rxclbinFilename << "'\n";
-  std::ifstream rbin_file(rxclbinFilename, std::ifstream::binary);
-  rbin_file.seekg(0, rbin_file.end);
-  unsigned rnb = rbin_file.tellg();
-  rbin_file.seekg(0, rbin_file.beg);
-  char *rbuf = new char[rnb];
-  rbin_file.read(rbuf, rnb);
-
-
-  // Creating Program from Binary File
-  cl::Program::Binaries bins;
-  bins.push_back({rbuf, rnb});
-  cl::Program program(context, devices, bins);
-
-  // This call will get the kernel object from program. A kernel is an
-  // OpenCL function that is executed on the FPGA.
 
   printf("INITIALIZING DATA\n");
 
-  Track* inTracks = new Track[MAX_TRACK_SIZE];
-  // Track* outTracks = new Track[MAX_TRACK_SIZE];
-
-  // OLD DATAFILE:
-  // // Input hit list to search
-  // int count = 0;
-  // // std::ifstream trackFile("../tb_files/data/formatted_data.csv");
-  // std::ifstream trackFile("../tb_files/data/tb_track_data.dat");
-  // std::ifstream scoreFile("../tb_files/data/tb_NNscore.dat");
-  // if(trackFile.is_open() && scoreFile.is_open()){
-  //   // Read the input file
-  //   std::string trackLine, scoreLine;
-  //   while(std::getline(trackFile, trackLine) && std::getline(scoreFile, scoreLine)){
-  //     std::stringstream linestream(trackLine);
-  //     std::string s;
-
-  //     double NNScore = std::stof(scoreLine); // get NN score from the other file
-  //     inTracks[count].NNScore = NNScore;
-  //     // inTracks[count].flag_delete = ap_int<2>(0);
-
-  //     // outTracks[count].NNScore = 0;
-  //     // outTracks[count].flag_delete = ap_int<2>(0);
-  //     // for(int i = 0; i < NHITS; i++){
-  //     //   outTracks[count].hits[i].x = 0;
-  //     //   outTracks[count].hits[i].y = 0;
-  //     //   outTracks[count].hits[i].y = 0;
-  //     // }
-
-  //     // store it in a float
-  //     std::vector<double> inValue;
-  //     while (std::getline(linestream, s, ' ')){
-  //       inValue.push_back(std::stof(s));
-  //     }
-
-  //     // Organize it into hits
-  //     for(int i = 0; i < NHITS; i++){
-  //       inTracks[count].hits[i].x = int(inValue[i + 0 * NHITS]); // TODO: is int() needed?
-  //       inTracks[count].hits[i].y = int(inValue[i + 1 * NHITS]);
-  //       inTracks[count].hits[i].z = int(inValue[i + 2 * NHITS]);
-  //     }
-  //     count++;
-  //     if(count >= MAX_TRACK_SIZE) break;
-  //   }
-  // } else {
-  //   printf("\n\nFailed to open input files!\n\n");
-  //   trackFile.close();
-  //   scoreFile.close();
-  //   return 0;
-  // }
-  // trackFile.close();
-  // scoreFile.close();
-
-
-
-
-
-
-
-
-  // Input hit list to search
-  int count = 0;
-  std::ifstream trackFile("../tb_files/data/formatted_data.csv");
-  if(trackFile.is_open()){
-    // Read the input file
-    std::string hitline;
-    // skip header
-    std::getline(trackFile, hitline);
-    while(true){ // assume it never ends... bad but eh
-      for(int h = 0; h < NHITS; h++){ // 5 hits
-        if(!std::getline(trackFile, hitline)){
-          printf("END OF FILE\n");
-          break;
-      }
-        std::stringstream linestream(hitline);
-        std::string s;
-
-        std::getline(linestream, s, ',');
-        int trackid = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        int hitid = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        float pt = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        int truth = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        float nnscore = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float x = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float y = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float z = std::stof(s);
-
-        // printf("%d %d :  %.2f %.2f %.2f\n", count, h, x, y, z);
-
-        inTracks[count].hits[h].x = x;
-        inTracks[count].hits[h].y = y;
-        inTracks[count].hits[h].z = z;
-        inTracks[count].NNScore = nnscore_t(nnscore); // redundant but eh
-      }
-      count++;
-      if(count >= MAX_TRACK_SIZE) break;
-    }
-  } else {
-    printf("\n\nFailed to open one of the files!!!\n\n\n");
-    trackFile.close();
-    return 0;
-  }
-  trackFile.close();
+  Track* inTracks = new Track[MAX_TRACK_SIZE * BATCH_SIZE];
+  int* nTracks = new int[BATCH_SIZE];
+  nnscore_t* outScores = new nnscore_t[BATCH_SIZE];
+  if(1 == read_data(inTracks, nTracks, outScores, "../tb_files/data/formatted_data.csv"))
+    return 1;
 
   printf("\n---=== Running Kernel ===---\n\n");
 
   auto begin = std::chrono::high_resolution_clock::now();
   printTiming("Initializing:\n  %d us\n", begin);
 
-  printf(" ┌------- sending 100 tracks\n");
+  printf(" ┌------- sending %d batches with %d tracks\n",BATCH_SIZE,MAX_TRACK_SIZE);
+  printf(" |          total tracks: %d or (%.2fKB)\n",BATCH_SIZE*MAX_TRACK_SIZE, (sizeof(Track)*BATCH_SIZE*MAX_TRACK_SIZE+sizeof(int)*BATCH_SIZE)/1024.);
   // setupRunSearch(program, context, q, inputTracks, outTracks);
-  setupRunSearch(program, context, q, inTracks);
+  setupRunSearch(hw, inTracks, nTracks, outScores);
   std::cout << " └>Total on FPGA+transfer run\n";
   int timingFPGA = printTiming("%d us\n", begin);
   printf("\n---=== Finished Kernel ===---\n\n");
@@ -291,12 +172,13 @@ int main(int argc, char *argv[]) {
   printf("Pred Outs:\n");
   int counter = 0;
   for (int i = 0; i < MAX_TRACK_SIZE; i++) {
-    if(float(inTracks[i].NNScore) < 0.5){
+    // if(float(inTracks[i].NNScore) < 0.5){
+    if(float(outScores[i]) < 0.5){
       continue;
     }
-    printf("ID: %d : Count: %d | NNScore: %f\n", i, counter++, float(inTracks[i].NNScore));
+    printf("ID: %d : Count: %d | NNScore: %f\n", i, counter++, float(outScores[i]));
     for(int j = 0; j < NHITS; j++){
-      printf(" %d %d %d\n",int(inTracks[i].hits[j].x), int(inTracks[i].hits[j].y), int(inTracks[i].hits[j].z));
+      printf(" %.2f %.2f %.2f\n",float(inTracks[i].hits[j].x), float(inTracks[i].hits[j].y), float(inTracks[i].hits[j].z));
     }
     printf("\n");
   }
@@ -305,7 +187,7 @@ int main(int argc, char *argv[]) {
   if(outputFile.is_open()){
     for (int i = 0; i < MAX_TRACK_SIZE; i++) {
       // if(float(outTracks[i].NNScore) < 0.5){
-      if(float(inTracks[i].NNScore) < 0.5){
+      if(float(outScores[i]) < 0.5){
         continue;
       }
       // outputFile << outTracks[i].NNScore << "\n";

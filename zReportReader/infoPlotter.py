@@ -76,9 +76,9 @@ class TrackVSPlot:
     self.modules: list = modules
 
     self.info: dict = {}
-    self.info["resources"] = PlotInfo()
-    self.info["latency"] = PlotInfo()
-    self.info["compile"] = PlotInfo()
+    # self.info["resources"] = PlotInfo()
+    # self.info["latency"] = PlotInfo()
+    # self.info["compile"] = PlotInfo()
 
     self.ID = ID
     self.debug: bool = print_debug
@@ -181,13 +181,15 @@ class TrackVSPlot:
 
     return self
 
-  def plot(self, xlims: list = [0,None]):
+  def plot(self, xlims: list = [0,None], mksize=20, linewidth=0.5, labels=None):
+    print(xlims)
+
     for key, info in self.info.items():
       assert isinstance(info, PlotInfo) # for intellisense?
       assert len(info.selections) == len(info.colors) and len(info.colors) == len(info.fits)
 
-      # if info.ylims is not None:
-      #   info.ax.set_ylim(info.ylims)
+      if info.ylims is not None:
+        info.ax.set_ylim(info.ylims)
         
       for s, c, ff in zip(info.selections, info.colors, info.fits):
         assert isinstance(ff, FitFunc)
@@ -198,7 +200,10 @@ class TrackVSPlot:
           track_sizes = track_sizes[track_sizes <= xlims[1]]
           d = self.data[self.data["Track Size"] <= xlims[1]][s]
 
-        info.ax.scatter(track_sizes, d, label=str(self.ID) + " " + s, edgecolor='black', color=c, zorder=3, s=20)
+        label = str(self.ID) + " " + s
+        if labels:
+          label = labels
+        info.ax.scatter(track_sizes, d, label=label, edgecolor='black', color=c, zorder=3, s=mksize)
         lastx = track_sizes[-1]
         lasty = d.to_numpy()[-1]
         if xlims[1] is None:
@@ -222,10 +227,11 @@ class TrackVSPlot:
           label = ff.to_string(*pars)
           print(self.ID, s, label)
           label = None # TODO: tmp
-          info.ax.plot(x, y, label=label, zorder=2, linewidth=0.5, color=c, linestyle='--')
-          info.ax.text(lastx, lasty, "  {} - {}".format(self.ID, ff.name))
+          info.ax.plot(x, y, label=label, zorder=2, linewidth=linewidth, color=c, linestyle='--')
+          # info.ax.text(lastx, lasty, "  {} - {}".format(self.ID, ff.name))
         else:
-          info.ax.text(lastx, lasty, "  {}".format(self.ID))
+          # info.ax.text(lastx, lasty, "  {}".format(self.ID))
+          pass
 
 
 
@@ -235,4 +241,5 @@ class TrackVSPlot:
       info.ax.set_xlabel("Track Size (count)")
       # info.ax.set_title("Module {}".format(self.modules)) # TODO: tmp
       info.ax.set_title("{}".format(", ".join(info.selections)))
-      info.final_call(info)
+      if info.final_call:
+        info.final_call(info)

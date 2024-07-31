@@ -27,9 +27,14 @@ source export.sh        # if running emulation
   - used to generate the datafile from `recoTracks.txt` which wasn't pushed to the github
 - `tb_files/data_converter.ipynb`
   - plots and prints of various tests after running the kernel
+- `zReportReader/reportReader.py <output_path> <mins> <secs>`
+  - saves parsed synth report file to the output_path as csv for easier reading, reads the `projectDefines.h` file directly for the MAX_TRACK_SIZE variable directly, hardcoded
+- `zReportReader/report_reader.ipynb`
+  - plots various things about the model compiled vs track_size
 - `nnscore_network/training.ipynb`
   - retrain the nnscore network, hls4ml seems a bit broken with latest version of keras
+  - fixed by downgrading keras version
 
 ## Problems
 
-- nnscore network currently takes up 120% DSP - figure out why or how to reduce
+

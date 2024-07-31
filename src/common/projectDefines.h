@@ -9,6 +9,7 @@
 
 // #define SIZE_LIST 10
 #define MAX_TRACK_SIZE 16
+#define BATCH_SIZE 16
 #define NHITS 5
 #define NPARS 3
 #define MIN_DIST 3000 // ~30x30 area // max distance is 1000
@@ -47,7 +48,8 @@ enum COMPARISON{BOTH, TRKA, TRKB, EQUAL};
 
 extern "C"{
 
-void runner(Track* inTracks, int max_shared, int num_tracks);
+// void runner(Track* inTracks, int max_shared, int num_tracks);
+void runner(Track* inTracks_full, int* nTracks_full, nnscore_t* outScores_full, int num_batches, int max_shared);
 
 // another algorithm:
 // void runner(Track* inTracks, Track* outTracks, int max_shared, int num_tracks);

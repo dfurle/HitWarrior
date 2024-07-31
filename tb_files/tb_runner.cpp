@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include "projectDefines.h"
+#include "data_reader.h"
 
 
 int printTiming(std::string str, std::chrono::_V2::system_clock::time_point & begin) {
@@ -20,81 +21,28 @@ int main(int argc, char *argv[]) {
 
   printf("INITIALIZING DATA\n");
 
-  Track* inTracks = new Track[MAX_TRACK_SIZE];
-  // Track* outTracks = new Track[MAX_TRACK_SIZE];
+  Track* inTracks = new Track[MAX_TRACK_SIZE * BATCH_SIZE];
+  int* nTracks = new int[BATCH_SIZE];
+  nnscore_t* outScores = new nnscore_t[MAX_TRACK_SIZE * BATCH_SIZE];
 
-  // Input hit list to search
-  int count = 0;
-  std::ifstream trackFile("formatted_data.csv");
-  if(trackFile.is_open()){
-    // Read the input file
-    std::string hitline;
-    // skip header
-    std::getline(trackFile, hitline);
-    while(true){ // assume it never ends... bad but eh
-      for(int h = 0; h < NHITS; h++){ // 5 hits
-        if(!std::getline(trackFile, hitline)){
-          printf("END OF FILE\n");
-          break;
-      }
-        std::stringstream linestream(hitline);
-        std::string s;
-
-        std::getline(linestream, s, ',');
-        int trackid = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        int hitid = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        float pt = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        int truth = std::stoi(s);
-
-        std::getline(linestream, s, ',');
-        float nnscore = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float x = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float y = std::stof(s);
-
-        std::getline(linestream, s, ',');
-        float z = std::stof(s);
-
-        // printf("%d %d :  %.2f %.2f %.2f\n", count, h, x, y, z);
-
-        inTracks[count].hits[h].x = x;
-        inTracks[count].hits[h].y = y;
-        inTracks[count].hits[h].z = z;
-        inTracks[count].NNScore = nnscore_t(nnscore); // redundant but eh
-      }
-      count++;
-      if(count >= MAX_TRACK_SIZE) break;
-    }
-  } else {
-    printf("\n\nFailed to open one of the files!!!\n\n\n");
-    trackFile.close();
-    return 0;
-  }
-  trackFile.close();
+  if(1 == read_data(inTracks, nTracks, outScores, "formatted_data.csv"))
+    return 1;
 
   printf("\n---=== Running CSim ===---\n\n");
   printTiming(" - Initialization %d us\n", begin);
   // runner(inTracks, outTracks, MIN_DIST, MAX_SHARED);
-  runner(inTracks, MIN_DIST, MAX_SHARED);
+  // runner(inTracks, MIN_DIST, MAX_SHARED);
+  runner(inTracks, nTracks, outScores, BATCH_SIZE, MAX_SHARED);
   printTiming(" - runner() %d us\n", begin);
   printf("\n---=== Finished CSim ===---\n\n");
 
   printf("Pred Outs:\n");
   int counter = 0;
   for (int i = 0; i < MAX_TRACK_SIZE; i++) {
-    if(float(inTracks[i].NNScore) < 0.5){
+    if(float(outScores[i]) < 0.5){
       continue;
     }
-    printf("ID: %d : %d | NNScore: %f\n", i, counter++, float(inTracks[i].NNScore));
+    printf("ID: %d : %d | NNScore: %f\n", i, counter++, float(outScores[i]));
     for(int j = 0; j < NHITS; j++){
       printf(" %8.2f %8.2f %8.2f\n",float(inTracks[i].hits[j].x), float(inTracks[i].hits[j].y), float(inTracks[i].hits[j].z));
     }
@@ -105,10 +53,12 @@ int main(int argc, char *argv[]) {
   if(outputFile.is_open()){
     for (int i = 0; i < MAX_TRACK_SIZE; i++) {
       // printf("inTracks[%d].NNScore == %.3f\n", i, float(inTracks[i].NNScore));
-      if(float(inTracks[i].NNScore) < 0.5){
+      // if(float(inTracks[i].NNScore) < 0.5){
+      if(float(outScores[i]) < 0.5){
         continue;
       }
-      outputFile << inTracks[i].NNScore << "\n";
+      // outputFile << inTracks[i].NNScore << "\n";
+      outputFile << outScores[i] << "\n";
       for(int j = 0; j < NHITS; j++){
         outputFile << inTracks[i].hits[j].x << " ";
         outputFile << inTracks[i].hits[j].y << " ";
@@ -123,6 +73,6 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
 
   std::cout << "Finished" << std::endl;
-  printTiming(" - Finished %d us\n", begin);
+  printTiming(" - Final Prints %d us\n", begin);
   return 0;
 }

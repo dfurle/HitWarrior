@@ -29,32 +29,21 @@ void filterLowNN(nnscore_t* in_nn){
 }
 
 // returns TRKA if trkA survives or TRKB or BOTH
-int compare(data_t* trkA, data_t* tmp, int j, nnscore_t nnA, nnscore_t nnB, int max_shared){
-  // #pragma HLS INLINE off
-  // #pragma HLS PIPELINE
-  // #pragma HLS UNROLL
+int compare(data_t* trkA, data_t* trkB, nnscore_t nnA, nnscore_t nnB, int max_shared){
   int nShared = 0;
-  int ii = 0;
-  int jj = 0;
   INNERLOOP:
-  for(ii = 0; ii < NHITS; ii++){
-    // #pragma HLS PIPELINE
-    // #pragma HLS UNROLL
-    // #pragma HLS UNROLL off
+  for(int ii = 0; ii < NHITS; ii++){
     data_t x1 = trkA[ii*NPARS + 0];
     data_t y1 = trkA[ii*NPARS + 1];
     data_t z1 = trkA[ii*NPARS + 2];
     INNER2LOOP:
-    for(jj = 0; jj < NHITS; jj++){
-      // #pragma HLS PIPELINE
-      // #pragma HLS UNROLL
-      // #pragma HLS UNROLL off
+    for(int jj = 0; jj < NHITS; jj++){
       if(x1 == 0) // can just check one of them probably... 
         continue;
       
-      data_t x2 = tmp[j*NHITS*NPARS + jj*NPARS + 0];
-      data_t y2 = tmp[j*NHITS*NPARS + jj*NPARS + 1];
-      data_t z2 = tmp[j*NHITS*NPARS + jj*NPARS + 2];
+      data_t x2 = trkB[jj*NPARS + 0];
+      data_t y2 = trkB[jj*NPARS + 1];
+      data_t z2 = trkB[jj*NPARS + 2];
       
       if(x1 == x2 && y1 == y2 && z1 == z2)
         nShared++;
@@ -95,9 +84,9 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
 
   OUTER:
   for(int i = 0; i < MAX_TRACK_SIZE; i++){
-    #pragma HLS PIPELINE
+    // #pragma HLS PIPELINE
     // #pragma HLS UNROLL off // doesnt seem to have a difference? probably default PIPELINE
-    // #pragma HLS PIPELINE off
+    #pragma HLS PIPELINE off
 
     if(i > num_tracks)
       break;
@@ -126,7 +115,14 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
       if(j == i)
         continue;
 
-      int cmpr = compare(trkA, inTracks, j, nnA, nnB, max_shared);
+      data_t trkB[NHITS * NPARS];
+      #pragma HLS ARRAY_PARTITION variable=trkB complete
+      TRKB:
+      for(int k = 0; k < NHITS * NPARS; k++){
+        trkB[k] = inTracks[j*NHITS*NPARS + k];
+      }
+
+      int cmpr = compare(trkA, trkB, nnA, nnB, max_shared);
 
       if(cmpr == COMPARISON::EQUAL){ // choose the lower index to use
         if(i > j)
@@ -147,11 +143,10 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
   }
 }
 
-// void readData(Track* inputTracks, data_t* inTracks_copy, nnscore_t* inTracks_nn){
-void readData(Track* inputTracks, data_t* inTracks_copy){
+void readData(int batch_id, Track* inputTracks, data_t* inTracks_copy){
   for(int i = 0; i < MAX_TRACK_SIZE; i++){
     #pragma HLS PIPELINE
-    Track trk = inputTracks[i];
+    Track trk = inputTracks[batch_id*MAX_TRACK_SIZE + i];
     for(int j=0; j < NHITS; j++){
       // #pragma HLS UNROLL
       inTracks_copy[i*NHITS*NPARS + j*NPARS + 0] = trk.hits[j].x;
@@ -161,48 +156,24 @@ void readData(Track* inputTracks, data_t* inTracks_copy){
   }
 }
 
-void writeData(Track* outTracks, nnscore_t* outTracks_nn){
+void writeData(int batch_id, nnscore_t* outScores_nn_full, nnscore_t* outScores_nn_batch){
   for(int i = 0; i < MAX_TRACK_SIZE; i++){
     #pragma HLS PIPELINE
-    nnscore_t nn = outTracks_nn[i];
+    nnscore_t nn = outScores_nn_batch[i];
     // Track trk = inTracks_STRUCT[i];
     // if(nn > nnscore_t(0))
     //   continue;
     // trk.NNScore = nn;
     // outTracks[i] = trk;
-    outTracks[i].NNScore = nn;
+    outScores_nn_full[batch_id * MAX_TRACK_SIZE + i] = nn;
   }
 }
 
-
-// void runner(Track* inTracks, int min_dist, int max_shared){
-void runner(Track* inTracks, int max_shared, int num_tracks){
+void HitWarrior(data_t* inTracks, nnscore_t* outScores_nn, int max_shared, int num_tracks){
   // #pragma HLS PIPELINE
-  // #pragma HLS DATAFLOW
-  #pragma HLS INTERFACE mode=m_axi port=inTracks offset=slave bundle=aximm1
-  // #pragma HLS INTERFACE mode=m_axi port=outTracks offset=slave bundle=aximm2
-  // #pragma HLS STABLE variable=min_dist
-  #pragma HLS STABLE variable=max_shared
-  #pragma HLS STABLE variable=num_tracks
-  
-  data_t inTracks_copy[MAX_TRACK_SIZE * NHITS * NPARS];
-  #pragma HLS ARRAY_PARTITION variable=inTracks_copy complete
 
-  // Track inTracks_STRUCT[MAX_TRACK_SIZE];
-  // #pragma HLS ARRAY_PARTITION variable=inTracks_STRUCT complete
-
-  // nnscore_t inTracks_nn[MAX_TRACK_SIZE];
-  nnscore_t midTracks_nn[MAX_TRACK_SIZE];
-  nnscore_t outTracks_nn[MAX_TRACK_SIZE];
-  // #pragma HLS ARRAY_PARTITION variable=inTracks_nn complete
-  #pragma HLS ARRAY_PARTITION variable=midTracks_nn complete
-  #pragma HLS ARRAY_PARTITION variable=outTracks_nn complete
-
-  // int min_dist_read = min_dist;
-  // int max_shared_read = max_shared;
-
-  // readData(inTracks, inTracks_copy, inTracks_nn);
-  readData(inTracks, inTracks_copy);
+  nnscore_t midScores_nn[MAX_TRACK_SIZE];
+  #pragma HLS ARRAY_PARTITION variable=midScores_nn complete
 
   for(int i = 0; i < MAX_TRACK_SIZE; i++){
     #pragma HLS PIPELINE
@@ -214,18 +185,37 @@ void runner(Track* inTracks, int max_shared, int num_tracks){
     input_t inLayer[N_INPUT_1_1];
     #pragma HLS ARRAY_PARTITION var=inLayer complete
     for(int j = 0; j < NHITS * NPARS; j++){
-      #pragma HLS PIPELINE
-      inLayer[j] = inTracks_copy[i*NHITS*NPARS + j];
+      inLayer[j] = inTracks[i*NHITS*NPARS + j];
     }
     nnscore_t nn = 0;
     runScoringNetwork(inLayer, &nn);
     filterLowNN(&nn);
-    midTracks_nn[i] = nn;
+    midScores_nn[i] = nn;
   }
+  searchHit(inTracks, midScores_nn, outScores_nn, max_shared, num_tracks);
+}
 
-  searchHit(inTracks_copy, midTracks_nn, outTracks_nn, max_shared, num_tracks);
 
-  writeData(inTracks, outTracks_nn);
+void runner(Track* inTracks_full, int* nTracks_full, nnscore_t* outScores_full, int max_shared, int num_batches){
+  // #pragma HLS PIPELINE
+  // #pragma HLS DATAFLOW
+  #pragma HLS INTERFACE mode=m_axi port=inTracks_full  offset=slave bundle=aximm1
+  #pragma HLS INTERFACE mode=m_axi port=nTracks_full   offset=slave bundle=aximm1
+  #pragma HLS INTERFACE mode=m_axi port=outScores_full offset=slave bundle=aximm2
+  #pragma HLS STABLE variable=num_batches
+  #pragma HLS STABLE variable=max_shared
+  
+  data_t inTracks_batch[MAX_TRACK_SIZE * NHITS * NPARS];
+  #pragma HLS ARRAY_PARTITION variable=inTracks_batch complete
+  nnscore_t outScores_nn_batch[MAX_TRACK_SIZE];
+  #pragma HLS ARRAY_PARTITION variable=outScores_nn_batch complete
+
+  for(int b = 0; b < num_batches; b++){
+    int num_tracks = nTracks_full[b];
+    readData(b, inTracks_full, inTracks_batch);
+    HitWarrior(inTracks_batch, outScores_nn_batch, max_shared, num_tracks);
+    writeData(b, outScores_full, outScores_nn_batch);
+  }
 }
 
 
