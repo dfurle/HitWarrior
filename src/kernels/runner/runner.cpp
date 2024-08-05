@@ -44,7 +44,7 @@ int compare(data_t* trkA, data_t* trkB, nnscore_t nnA, nnscore_t nnB, int max_sh
       data_t x2 = trkB[jj*NPARS + 0];
       data_t y2 = trkB[jj*NPARS + 1];
       data_t z2 = trkB[jj*NPARS + 2];
-      
+
       if(x1 == x2 && y1 == y2 && z1 == z2)
         nShared++;
 
@@ -114,6 +114,7 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
         break;
       if(j == i)
         continue;
+
 
       data_t trkB[NHITS * NPARS];
       #pragma HLS ARRAY_PARTITION variable=trkB complete

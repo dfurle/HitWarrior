@@ -8,13 +8,15 @@
 // #include "hls_stream.h"
 
 // #define SIZE_LIST 10
-#define MAX_TRACK_SIZE 32
+#define MAX_TRACK_SIZE 64
 #define BATCH_SIZE 16
 #define NHITS 5
 #define NPARS 3
-#define MIN_DIST 3000 // ~30x30 area // max distance is 1000
+// #define MIN_DIST 3000 // ~30x30 area // max distance is 1000
 #define MAX_SHARED 2
 #define MIN_THRESHOLD 0.5
+
+#define __SYNTHESIS__
 
 #define HIT_SIZE 16
 #define SCORE_SIZE 16
