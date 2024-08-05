@@ -133,17 +133,19 @@ void setupRunSearch(CKernel& hw, Track* in, int* nTracks, nnscore_t* outScores){
 
 int main(int argc, char *argv[]) {
 
-  // TARGET_DEVICE macro needs to be passed from gcc command line
+  // Pass the xclbin as argument
   if (argc < 2 || argc > 3) {
     std::cout << "Usage: " << argv[0] << "<xclbin>" << std::endl;
     return EXIT_FAILURE;
   }
 
+  // custom kernel object, to make device initialization easier and readable
+  // not deeply tested, but seems to work 
   CKernel hw;
   printf("setting up device\n");
-  hw.setup_device("u250");
+  hw.setup_device("u250");   // device to run on, u250 for this case, TODO: move to argument?
   printf("loading xcl\n");
-  hw.load_xclbin(argv[1]);
+  hw.load_xclbin(argv[1]);  // loading the xclbin into the device
   // hw.setup_kernel("runner");
 
 
@@ -163,8 +165,9 @@ int main(int argc, char *argv[]) {
   printf(" ┌------- sending %d batches with %d tracks\n",BATCH_SIZE,MAX_TRACK_SIZE);
   printf(" |          total tracks: %d or (%.2fKB)\n",BATCH_SIZE*MAX_TRACK_SIZE, (sizeof(Track)*BATCH_SIZE*MAX_TRACK_SIZE+sizeof(int)*BATCH_SIZE)/1024.);
   // setupRunSearch(program, context, q, inputTracks, outTracks);
+  begin = std::chrono::high_resolution_clock::now();
   setupRunSearch(hw, inTracks, nTracks, outScores);
-  std::cout << " └>Total on FPGA+transfer run\n";
+  printf(" └>Total on FPGA+transfer run\n");
   int timingFPGA = printTiming("%d us\n", begin);
   printf("\n---=== Finished Kernel ===---\n\n");
   std::cout << std::endl;

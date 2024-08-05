@@ -7,7 +7,7 @@ import numpy as np
 import os
 from scipy.optimize import curve_fit
 
-
+# estimate, i couldnt find true max vals...
 MAX_VALS = {"BRAM": 100000, "DSP":13000, "FF":4106900, "LUT":1728000, "URAM":1000}
 
 def saveReport(tracksize, timing, out_name):

@@ -81,12 +81,11 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
   // #pragma HLS PIPELINE off
   // #pragma HLS PIPELINE
 
-
   OUTER:
   for(int i = 0; i < MAX_TRACK_SIZE; i++){
-    // #pragma HLS PIPELINE
-    // #pragma HLS UNROLL off // doesnt seem to have a difference? probably default PIPELINE
-    #pragma HLS PIPELINE off
+    #pragma HLS PIPELINE
+    // #pragma HLS UNROLL off
+    // #pragma HLS PIPELINE off
 
     if(i > num_tracks)
       break;
@@ -98,13 +97,14 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
     #pragma HLS ARRAY_PARTITION variable=trkA complete
     TRKA:
     for(int j = 0; j < NHITS * NPARS; j++){
+      #pragma HLS UNROLL
       trkA[j] = inTracks[i*NHITS*NPARS + j];
     }
 
     INNER:
     for(int j = 0; j < MAX_TRACK_SIZE; j++){
-      // #pragma HLS UNROLL off
-      #pragma HLS PIPELINE
+      #pragma HLS UNROLL
+      // #pragma HLS PIPELINE
       // #pragma HLS PIPELINE off
       nnscore_t nnB = in_nn[j];
       if(nnB < nnscore_t(0)){
@@ -119,6 +119,7 @@ void searchHit(data_t* inTracks, nnscore_t* in_nn, nnscore_t* out_nn, int max_sh
       #pragma HLS ARRAY_PARTITION variable=trkB complete
       TRKB:
       for(int k = 0; k < NHITS * NPARS; k++){
+        #pragma HLS UNROLL
         trkB[k] = inTracks[j*NHITS*NPARS + k];
       }
 
@@ -175,6 +176,8 @@ void HitWarrior(data_t* inTracks, nnscore_t* outScores_nn, int max_shared, int n
   nnscore_t midScores_nn[MAX_TRACK_SIZE];
   #pragma HLS ARRAY_PARTITION variable=midScores_nn complete
 
+
+  // nnscoring and filtering low threshold tracks
   for(int i = 0; i < MAX_TRACK_SIZE; i++){
     #pragma HLS PIPELINE
     // #pragma HLS PIPELINE off
@@ -192,10 +195,12 @@ void HitWarrior(data_t* inTracks, nnscore_t* outScores_nn, int max_shared, int n
     filterLowNN(&nn);
     midScores_nn[i] = nn;
   }
+
+  // overlap removal
   searchHit(inTracks, midScores_nn, outScores_nn, max_shared, num_tracks);
 }
 
-
+// main function, top function, start point
 void runner(Track* inTracks_full, int* nTracks_full, nnscore_t* outScores_full, int max_shared, int num_batches){
   // #pragma HLS PIPELINE
   // #pragma HLS DATAFLOW
@@ -212,9 +217,9 @@ void runner(Track* inTracks_full, int* nTracks_full, nnscore_t* outScores_full, 
 
   for(int b = 0; b < num_batches; b++){
     int num_tracks = nTracks_full[b];
-    readData(b, inTracks_full, inTracks_batch);
-    HitWarrior(inTracks_batch, outScores_nn_batch, max_shared, num_tracks);
-    writeData(b, outScores_full, outScores_nn_batch);
+    readData(b, inTracks_full, inTracks_batch); // read batch from aximm1, memory
+    HitWarrior(inTracks_batch, outScores_nn_batch, max_shared, num_tracks);  // Run the HitWarrior on the batch
+    writeData(b, outScores_full, outScores_nn_batch); // write back the scores to aximm2, memory
   }
 }
 

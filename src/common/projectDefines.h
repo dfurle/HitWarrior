@@ -8,7 +8,7 @@
 // #include "hls_stream.h"
 
 // #define SIZE_LIST 10
-#define MAX_TRACK_SIZE 16
+#define MAX_TRACK_SIZE 32
 #define BATCH_SIZE 16
 #define NHITS 5
 #define NPARS 3
