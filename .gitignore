@@ -1,0 +1,15 @@
+build*
+logs*
+**.png
+nnscore_network/keras_env
+nnscore_network/TMPap_types
+nnscore_network/nnscore_prj
+nnscore_network/nnscore_prj.tar.gz
+nnscore_network/formatted_data.csv
+tb_files/tb_output.dat
+tb_files/data/recoTracks.txt
+tb_files/data/formatted_data.csv
+src/kernels/nnscore_kernel_old
+zReportReader/data/
+*.pdf
+__pycache__

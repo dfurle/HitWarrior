@@ -12,7 +12,7 @@
 // hls-fpga-machine-learning insert bram
 
 #define CHECKPOINT 5000
-#define INPUTTRACKSIZE 10
+#define MAX_TRACK_SIZE 10
 
 namespace nnet {
     bool trace_enabled = true;
@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     // load predictions from text file
     std::ifstream fpr("tb_data/tb_output.dat");
 
-    int num_trk = INPUTTRACKSIZE;
+    int num_trk = MAX_TRACK_SIZE;
 
 
     ///////////////////////
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    for (int j = 0; j < INPUTTRACKSIZE; j++) 
+    for (int j = 0; j < MAX_TRACK_SIZE; j++) 
     {  
         std::cout<<"Track : "<<j<<" ";
         for(int i = 0; i < NHITS; i++)

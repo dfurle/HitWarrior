@@ -5,9 +5,11 @@
     // "${XILINX_HLS}/include/etc/",
     "/HDD/Xilinx/Vitis_HLS/2023.2/include/",
     "/HDD/Xilinx/Vitis_HLS/2023.2/include/etc/",
-    "${workspaceFolder}/runner/",
-    "${workspaceFolder}",
+    "${workspaceFolder}/src/common/",
+    "${workspaceFolder}/src/host/",
+    "${workspaceFolder}/src/kernels/",
+    "${workspaceFolder}/tb_files/",
   ],
   "C_Cpp.default.compilerPath": "/usr/bin/g++-11",
-  "C_Cpp.default.cppStandard": "c++17"
+  "C_Cpp.default.cppStandard": "c++11"
 }

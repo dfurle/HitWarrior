@@ -2,89 +2,67 @@
 #include <iostream>
 #include <stdlib.h>
 
+#include <chrono>
 #include "projectDefines.h"
+#include "data_reader.h"
+
+
+int printTiming(std::string str, std::chrono::_V2::system_clock::time_point & begin) {
+  auto end = std::chrono::high_resolution_clock::now();
+  int diffus = std::chrono::duration_cast < std::chrono::microseconds > (end - begin).count();
+  printf(str.c_str(), diffus);
+  begin = end;
+  return diffus;
+}
+
 
 int main(int argc, char *argv[]) {
+  auto begin = std::chrono::high_resolution_clock::now();
 
   printf("INITIALIZING DATA\n");
 
-  Track* inputTracks = new Track[INPUTTRACKSIZE];
-  Track* outTracks = new Track[INPUTTRACKSIZE];
+  Track* inTracks = new Track[MAX_TRACK_SIZE * BATCH_SIZE];
+  int* nTracks = new int[BATCH_SIZE];
+  nnscore_t* outScores = new nnscore_t[MAX_TRACK_SIZE * BATCH_SIZE];
 
-  // Input hit list to search
-  int count = 0;
-  std::ifstream trackFile("tb_track_data.dat");
-  std::ifstream scoreFile("tb_NNscore.dat");
-  if(trackFile.is_open() && scoreFile.is_open()){
-    // Read the input file
-    std::string trackLine, scoreLine;
-    while(std::getline(trackFile, trackLine) && std::getline(scoreFile, scoreLine)){
-      std::stringstream linestream(trackLine);
-      std::string s;
-
-      double NNScore = std::stof(scoreLine); // get NN score from the other file
-      inputTracks[count].NNScore = NNScore;
-      inputTracks[count].flag_delete = ap_int<2>(0);
-
-      outTracks[count].NNScore = 0;
-      outTracks[count].flag_delete = ap_int<2>(0);
-      for(int i = 0; i < NHITS; i++){
-        outTracks[count].hits[i].x = 0;
-        outTracks[count].hits[i].y = 0;
-        outTracks[count].hits[i].y = 0;
-      }
-
-      // store it in a float
-      std::vector<double> inValue;
-      while (std::getline(linestream, s, ' ')){
-        inValue.push_back(std::stof(s));
-      }
-
-      // Organize it into hits
-      for(int i = 0; i < NHITS; i++){
-        inputTracks[count].hits[i].x = inValue[i + 0 * NHITS];
-        inputTracks[count].hits[i].y = inValue[i + 1 * NHITS];
-        inputTracks[count].hits[i].z = inValue[i + 2 * NHITS];
-      }
-      count++;
-      if(count >= INPUTTRACKSIZE) break;
-    }
-  } else {
-    printf("\n\nFailed to open one of the files!!!\n\n\n");
-    trackFile.close();
-    scoreFile.close();
-    return 0;
-  }
-  trackFile.close();
-  scoreFile.close();
+  if(1 == read_data(inTracks, nTracks, outScores, "formatted_data.csv"))
+    return 1;
 
   printf("\n---=== Running CSim ===---\n\n");
-  runner(inputTracks, outTracks, MIN_DIST, MAX_SHARED);
+  printTiming(" - Initialization %d us\n", begin);
+  // runner(inTracks, outTracks, MIN_DIST, MAX_SHARED);
+  // runner(inTracks, MIN_DIST, MAX_SHARED);
+  runner(inTracks, nTracks, outScores, BATCH_SIZE, MAX_SHARED);
+  printTiming(" - runner() %d us\n", begin);
   printf("\n---=== Finished CSim ===---\n\n");
 
   printf("Pred Outs:\n");
-  for (int i = 0; i < INPUTTRACKSIZE; i++) {
-    if(float(outTracks[i].NNScore) < 0.5){
-      break;
+  int counter = 0;
+  for (int i = 0; i < MAX_TRACK_SIZE; i++) {
+    if(float(outScores[i]) < 0.5){
+      continue;
     }
-    printf("ID: %d | NNScore: %f\n", i, float(outTracks[i].NNScore));
+    printf("ID: %d : %d | NNScore: %f\n", i, counter++, float(outScores[i]));
     for(int j = 0; j < NHITS; j++){
-      printf(" %d %d %d\n",outTracks[i].hits[j].x, outTracks[i].hits[j].y, outTracks[i].hits[j].z);
+      printf(" %8.2f %8.2f %8.2f\n",float(inTracks[i].hits[j].x), float(inTracks[i].hits[j].y), float(inTracks[i].hits[j].z));
     }
     printf("\n");
   }
 
-  std::ofstream outputFile("../tb_output.dat");
+  std::ofstream outputFile("../../../../../../tb_files/tb_output.dat");
   if(outputFile.is_open()){
-    for (int i = 0; i < INPUTTRACKSIZE; i++) {
-      if(float(outTracks[i].NNScore) < 0.5){
-        break;
+    for (int i = 0; i < MAX_TRACK_SIZE; i++) {
+      // printf("inTracks[%d].NNScore == %.3f\n", i, float(inTracks[i].NNScore));
+      // if(float(inTracks[i].NNScore) < 0.5){
+      if(float(outScores[i]) < 0.5){
+        continue;
       }
-      outputFile << outTracks[i].NNScore << "\n";
+      // outputFile << inTracks[i].NNScore << "\n";
+      outputFile << outScores[i] << "\n";
       for(int j = 0; j < NHITS; j++){
-        outputFile << outTracks[i].hits[j].x << " ";
-        outputFile << outTracks[i].hits[j].y << " ";
-        outputFile << outTracks[i].hits[j].z << "\n";
+        outputFile << inTracks[i].hits[j].x << " ";
+        outputFile << inTracks[i].hits[j].y << " ";
+        outputFile << inTracks[i].hits[j].z << "\n";
       }
     }
   } else {
@@ -95,5 +73,6 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
 
   std::cout << "Finished" << std::endl;
+  printTiming(" - Final Prints %d us\n", begin);
   return 0;
 }

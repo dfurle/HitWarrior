@@ -1,0 +1,25 @@
+Event: 0
+TrueTrack barecode: 5220026 pt: 1.92168 eta: 0.178689 phi: 0.424963 z0: 69.3691 d0: 0.0947953 pdgid: 5220026 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5230027 pt: 1.82985 eta: 0.217768 phi: 0.358569 z0: -28.0941 d0: 1.30714 pdgid: 5230027 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5250029 pt: 1.74509 eta: 0.144614 phi: 0.356388 z0: 0.4694 d0: -0.502814 pdgid: 5250029 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5260030 pt: 4.94042 eta: 0.274066 phi: 0.335073 z0: -5.22517 d0: -1.63299 pdgid: 5260030 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5280032 pt: 4.19418 eta: 0.263996 phi: 0.3668 z0: 82.6587 d0: 0.26519 pdgid: 5280032 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5290033 pt: 1.43981 eta: 0.197656 phi: 0.352915 z0: 79.9259 d0: 0.645517 pdgid: 5290033 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5300034 pt: 8.50444 eta: 0.27851 phi: 0.41445 z0: -18.81 d0: -1.40801 pdgid: 5300034 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5370041 pt: 1.94091 eta: 0.141005 phi: 0.343328 z0: 81.7974 d0: -1.20693 pdgid: 5370041 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5430047 pt: 1.92137 eta: 0.161672 phi: 0.331027 z0: -89.5315 d0: -0.606888 pdgid: 5430047 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5450049 pt: 3.91909 eta: 0.204419 phi: 0.471711 z0: -120.801 d0: -1.21957 pdgid: 5450049 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5470051 pt: 1.81672 eta: 0.135699 phi: 0.449311 z0: 6.4479 d0: 0.603598 pdgid: 5470051 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
+TrueTrack barecode: 5490053 pt: 13.7824 eta: 0.277171 phi: 0.374502 z0: 112.055 d0: 1.29614 pdgid: 5490053 nHits: 0 recoTrackIndex: 18446744073709551615 track prob: 1
+hit index: 
